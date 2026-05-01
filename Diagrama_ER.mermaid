@@ -1,0 +1,93 @@
+---
+title: Diagrama ER — Clínica Agendamentos MVP
+---
+
+erDiagram
+  usuario {
+    int id PK
+    varchar nome
+    varchar email
+    varchar senha_hash
+    enum perfil
+    boolean ativo
+    datetime created_at
+    datetime updated_at
+  }
+
+  supervisor {
+    int id PK
+    int usuario_id FK
+    varchar crp
+    varchar especialidade
+    boolean ativo
+  }
+
+  estagiario {
+    int id PK
+    int usuario_id FK
+    int supervisor_id FK
+    varchar matricula
+    tinyint carga_horaria_semanal
+    date data_inicio
+    date data_fim
+    boolean ativo
+  }
+
+  paciente {
+    int id PK
+    varchar nome
+    date data_nascimento
+    varchar cpf
+    varchar telefone
+    enum tipo_atendimento
+    varchar responsavel_nome
+    boolean ativo
+  }
+
+  sala {
+    int id PK
+    varchar nome
+    enum tipo
+    tinyint capacidade
+    boolean ativa
+  }
+
+  agendamento {
+    int id PK
+    int sala_id FK
+    int estagiario_id FK
+    tinyint dia_semana
+    time horario_inicio
+    time horario_fim
+    enum tipo
+    date data_especifica
+    enum status
+    text observacoes
+  }
+
+  agendamento_pacientes {
+    int agendamento_id FK
+    int paciente_id FK
+    date data_entrada
+  }
+
+  sessao {
+    int id PK
+    int agendamento_id FK
+    date data_sessao
+    enum status
+    int estagiario_substituto_id FK
+    int registrado_por FK
+    text notas
+  }
+
+  usuario ||--o| supervisor : "eh supervisor"
+  usuario ||--o| estagiario : "eh estagiario"
+  supervisor ||--o{ estagiario : "supervisiona"
+  sala ||--o{ agendamento : "alocada em"
+  estagiario ||--o{ agendamento : "conduz"
+  agendamento ||--o{ agendamento_pacientes : "tem"
+  paciente ||--o{ agendamento_pacientes : "participa"
+  agendamento ||--o{ sessao : "gera"
+  estagiario ||--o{ sessao : "substitui em"
+  usuario ||--o{ sessao : "registra"

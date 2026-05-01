@@ -1,0 +1,221 @@
+import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+// ─── Calcular Idade a partir da data de nascimento ───────────────────────────
+const calcularIdade = (dataNascimento: Date): number => {
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - dataNascimento.getFullYear();
+  const mesAtual = hoje.getMonth() - dataNascimento.getMonth();
+  if (mesAtual < 0 || (mesAtual === 0 && hoje.getDate() < dataNascimento.getDate())) {
+    idade--;
+  }
+  return idade;
+};
+
+// ─── GET /pacientes ───────────────────────────────────────────────────────────
+export const getPacientes = async (req: Request, res: Response) => {
+  try {
+    const pacientes = await prisma.paciente.findMany({
+      where: { ativo: true },
+    });
+    res.json(pacientes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar pacientes' });
+  }
+};
+
+// ─── GET /pacientes/:id/perfil ────────────────────────────────────────────────
+export const getPacientePerfil = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const paciente = await prisma.paciente.findUnique({
+      where: { id: parseInt(id as string) },
+      include: {
+        agendamentos: {
+          include: {
+            agendamento: {
+              include: {
+                sala: true,
+                estagiario: { include: { usuario: { select: { nome: true } } } },
+                sessoes: { orderBy: { dataSessao: 'desc' }, take: 20 }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!paciente) return res.status(404).json({ error: 'Paciente não encontrado.' });
+
+    const sessoes = paciente.agendamentos.flatMap(ap =>
+      ap.agendamento.sessoes.map(s => ({
+        id: s.id,
+        data: s.dataSessao,
+        status: s.status,
+        notas: s.notas,
+        sala: ap.agendamento.sala.nome,
+        estagiario: ap.agendamento.estagiario.usuario.nome
+      }))
+    ).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+    const totalSessoes = sessoes.length;
+    const presencas = sessoes.filter(s => s.status === 'CONCLUIDA').length;
+    const faltas = sessoes.filter(s => s.status === 'FALTA').length;
+
+    res.json({ ...paciente, sessoes, stats: { totalSessoes, presencas, faltas, taxaPresenca: totalSessoes > 0 ? Math.round((presencas / totalSessoes) * 100) : 0 } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar perfil do paciente' });
+  }
+};
+
+// ─── POST /pacientes ──────────────────────────────────────────────────────────
+// Pode ser usado por Estagiários e Gestores
+export const createPaciente = async (req: Request, res: Response) => {
+  try {
+    const { nome, dataNascimento, cpf, telefone, tipoAtendimento, responsavelNome, responsavelCpf, responsavelTelefone } = req.body;
+
+    if (!nome || !dataNascimento || !cpf || !telefone || !tipoAtendimento) {
+      return res.status(400).json({ error: 'Campos obrigatórios: nome, dataNascimento, cpf, telefone, tipoAtendimento.' });
+    }
+
+    const nascimento = new Date(dataNascimento);
+    const idade = calcularIdade(nascimento);
+    const isMenorDeIdade = idade < 18;
+
+    // Regra de Negócio: Menor de idade PRECISA de responsável
+    if (isMenorDeIdade && (!responsavelNome || !responsavelTelefone)) {
+      return res.status(422).json({ 
+        error: `Paciente é menor de idade (${idade} anos). Nome e Telefone do Responsável são obrigatórios.`,
+        menorDeIdade: true
+      });
+    }
+
+    const paciente = await prisma.paciente.create({
+      data: {
+        nome,
+        dataNascimento: nascimento,
+        cpf,
+        telefone,
+        tipoAtendimento,
+        ativo: true,
+        responsavelNome: responsavelNome || null,
+        responsavelCpf: responsavelCpf || null,
+        responsavelTelefone: responsavelTelefone || null
+      }
+    });
+
+    res.status(201).json(paciente);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Este CPF já está cadastrado no sistema.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao criar paciente' });
+  }
+};
+
+// ─── PUT /pacientes/:id/responsavel ──────────────────────────────────────────
+export const updateResponsavel = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { responsavelNome, responsavelCpf, responsavelTelefone } = req.body;
+
+    if (!responsavelNome || !responsavelTelefone) {
+       return res.status(400).json({ error: 'Nome e Telefone do Responsável são obrigatórios.' });
+    }
+
+    const pacienteAtualizado = await prisma.paciente.update({
+      where: { id: parseInt(id as string) },
+      data: { responsavelNome, responsavelCpf, responsavelTelefone }
+    });
+
+    res.json(pacienteAtualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao atualizar dados do responsável' });
+  }
+};
+
+// ─── GET /pacientes/pendentes ─────────────────────────────────────────────────
+// Lista de Usuários pendentes de aprovação (visível para Estagiários e Gestores)
+export const getPacientesPendentes = async (req: Request, res: Response) => {
+  try {
+    const pendentes = await prisma.usuario.findMany({
+      where: { status: 'PENDENTE', perfil: 'PACIENTE' },
+      select: { id: true, nome: true, email: true, createdAt: true }
+    });
+    res.json(pendentes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar pendentes' });
+  }
+};
+
+// ─── PATCH /pacientes/aprovar/:usuarioId ──────────────────────────────────────
+// Estagiário aprova um paciente (PENDENTE → ATIVO)
+export const aprovarPaciente = async (req: Request, res: Response) => {
+  try {
+    const solicitantePerfi = (req as any).user.perfil;
+    if (!['ESTAGIARIO', 'GESTOR', 'ROOT'].includes(solicitantePerfi)) {
+      return res.status(403).json({ error: 'Acesso negado.' });
+    }
+
+    const { usuarioId } = req.params;
+    const usuario = await prisma.usuario.update({
+      where: { id: parseInt(usuarioId as string) },
+      data: { status: 'ATIVO' }
+    });
+
+    res.json({ message: `Conta de ${usuario.nome} aprovada com sucesso!`, usuario });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao aprovar paciente' });
+  }
+};
+
+// ─── PATCH /usuarios/promover-estagiario/:usuarioId ───────────────────────────
+// Somente o GESTOR ou ROOT pode promover um usuário para ESTAGIÁRIO
+export const promoverParaEstagiario = async (req: Request, res: Response) => {
+  try {
+    const solicitantePerfil = (req as any).user.perfil;
+    if (!['GESTOR', 'ROOT'].includes(solicitantePerfil)) {
+      return res.status(403).json({ error: 'Apenas Gestores podem promover um usuário para Estagiário.' });
+    }
+
+    const { usuarioId } = req.params;
+    const { matricula, cargaHorariaSemanal, dataInicio } = req.body;
+
+    if (!matricula || !cargaHorariaSemanal || !dataInicio) {
+      return res.status(400).json({ error: 'Matrícula, Carga Horária e Data de Início são obrigatórios.' });
+    }
+
+    // Transação: Atualiza o perfil do Usuário E cria o registro Estagiario
+    const [usuarioAtualizado, novoEstagiario] = await prisma.$transaction([
+      prisma.usuario.update({
+        where: { id: parseInt(usuarioId as string) },
+        data: { perfil: 'ESTAGIARIO', status: 'ATIVO' }
+      }),
+      prisma.estagiario.create({
+        data: {
+          usuarioId: parseInt(usuarioId as string),
+          matricula,
+          cargaHorariaSemanal: parseInt(cargaHorariaSemanal),
+          dataInicio: new Date(dataInicio),
+          ativo: true
+        }
+      })
+    ]);
+
+    res.json({ message: `${usuarioAtualizado.nome} agora é um Estagiário!`, estagiario: novoEstagiario });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Esta matrícula já está em uso.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao promover usuário para Estagiário' });
+  }
+};

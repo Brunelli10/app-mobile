@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Usuario {
+  id         Int          @id @default(autoincrement())
+  nome       String
+  email      String       @unique
+  senhaHash  String
+  perfil     String       @default("PACIENTE") // "ROOT", "GESTOR", "ESTAGIARIO", "SUPERVISOR", "PACIENTE"
+  status     String       @default("PENDENTE") // "PENDENTE", "ATIVO", "BLOQUEADO"
+  fotoPerfil String?      // Para armazenar o upload local (path)
+  ativo      Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  supervisor Supervisor?
+  estagiario Estagiario?
+  paciente   Paciente?
+  sessoesRegistradas Sessao[] @relation("RegistradoPor")
+}
+
+model Supervisor {
+  id            Int          @id @default(autoincrement())
+  usuarioId     Int          @unique
+  usuario       Usuario      @relation(fields: [usuarioId], references: [id])
+  crp           String
+  especialidade String
+  ativo         Boolean      @default(true)
+
+  estagiarios Estagiario[]
+}
+
+model Estagiario {
+  id                   Int          @id @default(autoincrement())
+  usuarioId            Int          @unique
+  usuario              Usuario      @relation(fields: [usuarioId], references: [id])
+  supervisorId         Int?
+  supervisor           Supervisor?  @relation(fields: [supervisorId], references: [id])
+  matricula            String       @unique
+  cargaHorariaSemanal  Int
+  dataInicio           DateTime
+  dataFim              DateTime?
+  ativo                Boolean      @default(true)
+
+  agendamentos Agendamento[]
+  sessoesSubstituidas Sessao[] @relation("EstagiarioSubstituto")
+}
+
+model Paciente {
+  id               Int          @id @default(autoincrement())
+  usuarioId        Int?         @unique
+  usuario          Usuario?     @relation(fields: [usuarioId], references: [id])
+  nome             String
+  dataNascimento   DateTime
+  cpf              String       @unique
+  telefone         String
+  tipoAtendimento  String       // "CRIANCA", "ADULTO", "CASAL"
+  ativo            Boolean      @default(true)
+  
+  // Dados do Responsável (sem tabela extra para não gerar complexidade desnecessária)
+  responsavelNome      String?
+  responsavelCpf       String?
+  responsavelTelefone  String?
+
+  agendamentos AgendamentoPaciente[]
+}
+
+model Sala {
+  id         Int          @id @default(autoincrement())
+  nome       String
+  tipo       String       // "INDIVIDUAL", "GRUPO", "LUDICA"
+  capacidade Int
+  ativa      Boolean      @default(true)
+
+  agendamentos Agendamento[]
+}
+
+model Agendamento {
+  id              Int          @id @default(autoincrement())
+  salaId          Int
+  sala            Sala         @relation(fields: [salaId], references: [id])
+  estagiarioId    Int
+  estagiario      Estagiario   @relation(fields: [estagiarioId], references: [id])
+  diaSemana       Int?
+  horarioInicio   String
+  horarioFim      String
+  tipo            String       // "UNICO", "10_SEMANAS"
+  dataEspecifica  DateTime?
+  status          String       // "CONFIRMADO", "CANCELADO"
+  observacoes     String?
+
+  pacientes AgendamentoPaciente[]
+  sessoes Sessao[]
+}
+
+model AgendamentoPaciente {
+  agendamentoId Int
+  agendamento   Agendamento @relation(fields: [agendamentoId], references: [id])
+  pacienteId    Int
+  paciente      Paciente    @relation(fields: [pacienteId], references: [id])
+  dataEntrada   DateTime    @default(now())
+
+  @@id([agendamentoId, pacienteId])
+}
+
+model Sessao {
+  id                       Int          @id @default(autoincrement())
+  agendamentoId            Int
+  agendamento              Agendamento  @relation(fields: [agendamentoId], references: [id])
+  salaId                   Int          @default(0) // Adicionado para trava de concorrência
+  horarioInicio            String       @default("") // Adicionado para trava de concorrência
+  dataSessao               DateTime
+  status                   String       // "REALIZADA", "FALTA", "CANCELADA"
+  estagiarioSubstitutoId   Int?
+  estagiarioSubstituto     Estagiario?  @relation("EstagiarioSubstituto", fields: [estagiarioSubstitutoId], references: [id])
+  registradoPorId          Int
+  registradoPor            Usuario      @relation("RegistradoPor", fields: [registradoPorId], references: [id])
+  notas                    String?
+
+  @@unique([salaId, dataSessao, horarioInicio])
+}
