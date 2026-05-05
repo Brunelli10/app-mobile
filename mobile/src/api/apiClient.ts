@@ -1,11 +1,14 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from '../store/useAuthStore';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 export const api = axios.create({
-  baseURL: 'http://192.168.15.3:3000/api',
-  timeout: 10000, // 10 segundos de timeout
+  // Se estiver na Web, usa localhost. Se estiver no mobile, usa o IP da sua rede.
+  baseURL: Platform.OS === 'web' 
+    ? 'http://localhost:3000/api' 
+    : 'http://192.168.15.3:3000/api', 
+  timeout: 10000,
 });
 
 // ─── Interceptor de Request: Injetar Token JWT ───────────────────────────────
