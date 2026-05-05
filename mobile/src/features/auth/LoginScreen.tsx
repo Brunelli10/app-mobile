@@ -9,6 +9,7 @@ import { api } from '../../api/apiClient';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { MotiView } from 'moti';
 
 const loginSchema = z.object({
   email: z.string().email('Digite um e-mail válido.'),
@@ -59,24 +60,40 @@ export function LoginScreen() {
     console.warn('⚠️ Validação do formulário falhou:', errors);
   };
 
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         style={styles.container}
       >
-        <View style={styles.header}>
+        <MotiView
+          from={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', delay: 100 }}
+          style={styles.header}
+        >
           <Text style={styles.logoPsi}>Ψ</Text>
           <Text style={styles.logoText}>Psicologia SEP</Text>
           <Text style={styles.logoSubText}>Gestão Clínica & Agendamentos</Text>
-        </View>
+        </MotiView>
 
-        <View style={styles.welcomeSection}>
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 800, delay: 300 }}
+          style={styles.welcomeSection}
+        >
           <Text style={styles.title}>Bem-vindo(a)</Text>
           <Text style={styles.subtitle}>Entre para gerenciar seus agendamentos</Text>
-        </View>
+        </MotiView>
 
-        <View style={styles.formContainer}>
+        <MotiView
+          from={{ opacity: 0, translateY: 30 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: 'timing', duration: 800, delay: 500 }}
+          style={styles.formContainer}
+        >
           <Controller
             control={control}
             name="email"
@@ -128,7 +145,7 @@ export function LoginScreen() {
               Criar Conta
             </Text>
           </Text>
-        </View>
+        </MotiView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
