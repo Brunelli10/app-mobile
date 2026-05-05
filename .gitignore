@@ -27,10 +27,8 @@ assets-build/
 .env.production.local
 
 # Prisma
-/app-mobile/backend-clinica/prisma/*.db
-/app-mobile/backend-clinica/prisma/*.db-journal
-/backend-clinica/prisma/*.db
-/backend-clinica/prisma/*.db-journal
+/backend/prisma/*.db
+/backend/prisma/*.db-journal
 
 # TypeScript
 *.tsbuildinfo
