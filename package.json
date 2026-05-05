@@ -4,6 +4,7 @@
   "description": "Sistema completo para Gestão da Clínica Escola de Psicologia",
   "scripts": {
     "start": "concurrently -c \"cyan.bold,green.bold\" -n \"BACKEND,MOBILE\" \"npm run start:backend\" \"npm run start:mobile\"",
+    "dev": "npm run db:push && concurrently -c \"cyan.bold,yellow.bold\" -n \"BACKEND,WEB\" \"npm run start:backend\" \"npm run start:web\"",
     "start:backend": "cd backend && npm run dev",
     "start:mobile": "cd mobile && npm start",
     "start:web": "cd mobile && npm run web",
