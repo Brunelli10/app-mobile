@@ -28,15 +28,14 @@ A arquitetura do projeto foi dividida em um monorepo que contempla tanto o Backe
 O projeto segue as melhores práticas da Engenharia de Software (MVC no backend, Feature-Sliced no frontend).
 
 ```
-app-mobile/
-├── backend-clinica/         # ⚙️ API REST (Node.js + Express)
+├── backend/                  # ⚙️ API REST (Node.js + Express)
 │   ├── prisma/              # Schema do banco de dados (SQLite/PostgreSQL)
 │   └── src/
 │       ├── controllers/     # Lógica de negócio
 │       ├── middleware/      # Validações Zod e JWT
 │       └── routes/          # Definição de endpoints
 │
-├── clinica-mobile/          # 📱 App Mobile (React Native + Expo)
+├── mobile/                   # 📱 App Mobile (React Native + Expo)
 │   └── src/
 │       ├── api/             # Configuração do Axios + Interceptors
 │       ├── config/          # Temas, Cores (Design System)
@@ -59,10 +58,10 @@ Nós implementamos o **Concurrently** para facilitar a sua vida (Developer Exper
 - Celular e Computador **na mesma rede Wi-Fi**.
 
 ### 2. Configurando o IP
-Para que o celular ache o backend, abra `clinica-mobile/src/api/apiClient.ts` e certifique-se de que o `baseURL` está apontando para o seu **IP Local** atual (ex: `http://192.168.x.x:3000/api`).
+Para que o celular ache o backend, abra `mobile/src/api/apiClient.ts` e certifique-se de que o `baseURL` está apontando para o seu **IP Local** atual (ex: `http://192.168.x.x:3000/api`).
 
 ### 3. Rodando tudo com 1 clique
-Abra o terminal **na raiz do projeto** (`app-mobile/`) e rode:
+Abra o terminal **na raiz do projeto** e rode:
 
 ```bash
 # 1. Instala as dependências de todo o monorepo (root, backend, frontend)

@@ -4,11 +4,11 @@
   "description": "Sistema completo para Gestão da Clínica Escola de Psicologia",
   "scripts": {
     "start": "concurrently -c \"cyan.bold,green.bold\" -n \"BACKEND,MOBILE\" \"npm run start:backend\" \"npm run start:mobile\"",
-    "start:backend": "cd backend-clinica && npm run dev",
-    "start:mobile": "cd clinica-mobile && npm start",
-    "install:all": "npm install && cd backend-clinica && npm install && cd ../clinica-mobile && npm install",
-    "db:push": "cd backend-clinica && npx prisma db push",
-    "db:seed": "cd backend-clinica && npx prisma db seed"
+    "start:backend": "cd backend && npm run dev",
+    "start:mobile": "cd mobile && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../mobile && npm install",
+    "db:push": "cd backend && npx prisma db push",
+    "db:seed": "cd backend && npx prisma db seed"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
