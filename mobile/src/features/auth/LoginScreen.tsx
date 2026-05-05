@@ -27,11 +27,15 @@ export function LoginScreen() {
   });
 
   const handleLogin = async (data: LoginFormData) => {
+    console.log('🚀 Tentativa de login iniciada com:', data.email);
     setLoading(true);
     try {
+      console.log('📡 Enviando POST para /auth/login...');
       const response = await api.post('/auth/login', { email: data.email, password: data.password });
+      console.log('✅ Login bem-sucedido! Token recebido.');
       await login(response.data.token, response.data.user);
     } catch (err: any) {
+      console.error('❌ Erro no login:', err);
       const errorData = err?.response?.data;
       // Conta PENDENTE — exibir mensagem específica ao invés de "credenciais inválidas"
       if (errorData?.statusConta === 'PENDENTE') {
@@ -49,6 +53,10 @@ export function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const onInvalid = (errors: any) => {
+    console.warn('⚠️ Validação do formulário falhou:', errors);
   };
 
   return (
@@ -107,7 +115,7 @@ export function LoginScreen() {
           <Button 
             title="ENTRAR" 
             style={styles.signInButton} 
-            onPress={handleSubmit(handleLogin)} 
+            onPress={handleSubmit(handleLogin, onInvalid)} 
             loading={loading}
           />
           
