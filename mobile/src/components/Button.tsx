@@ -2,6 +2,8 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, TouchableOpacityProps, ActivityIndicator } from 'react-native';
 import { colors } from '../config/theme';
 
+import { MotiView } from 'moti';
+
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
   loading?: boolean;
@@ -9,18 +11,24 @@ interface ButtonProps extends TouchableOpacityProps {
 
 export function Button({ title, loading, style, ...rest }: ButtonProps) {
   return (
-    <TouchableOpacity 
-      style={[styles.container, style, loading && styles.disabled]} 
-      disabled={loading}
-      activeOpacity={0.85}
-      {...rest}
+    <MotiView
+      from={{ scale: 1 }}
+      animate={{ scale: 1 }}
+      transition={{ type: 'spring' }}
     >
-      {loading ? (
-        <ActivityIndicator color="#FFF" />
-      ) : (
-        <Text style={styles.title}>{title}</Text>
-      )}
-    </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.container, style, loading && styles.disabled]} 
+        disabled={loading}
+        activeOpacity={0.85}
+        {...rest}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <Text style={styles.title}>{title}</Text>
+        )}
+      </TouchableOpacity>
+    </MotiView>
   );
 }
 

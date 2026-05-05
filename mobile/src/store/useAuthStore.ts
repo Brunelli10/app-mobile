@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 interface AuthState {
   token: string | null;
@@ -12,11 +13,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   user: null,
   login: async (token, userData) => {
-    await SecureStore.setItemAsync('clinic_jwt_token', token);
+    if (Platform.OS === 'web') {
+      localStorage.setItem('clinic_jwt_token', token);
+    } else {
+      await SecureStore.setItemAsync('clinic_jwt_token', token);
+    }
     set({ token, user: userData });
   },
   logout: async () => {
-    await SecureStore.deleteItemAsync('clinic_jwt_token');
+    if (Platform.OS === 'web') {
+      localStorage.removeItem('clinic_jwt_token');
+    } else {
+      await SecureStore.deleteItemAsync('clinic_jwt_token');
+    }
     set({ token: null, user: null });
   },
 }));
