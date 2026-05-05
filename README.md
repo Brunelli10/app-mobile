@@ -29,22 +29,16 @@ O projeto segue as melhores práticas da Engenharia de Software (MVC no backend,
 
 ```
 ├── backend/                  # ⚙️ API REST (Node.js + Express)
-│   ├── prisma/              # Schema do banco de dados (SQLite/PostgreSQL)
-│   └── src/
-│       ├── controllers/     # Lógica de negócio
-│       ├── middleware/      # Validações Zod e JWT
-│       └── routes/          # Definição de endpoints
-│
 ├── mobile/                   # 📱 App Mobile (React Native + Expo)
-│   └── src/
-│       ├── api/             # Configuração do Axios + Interceptors
-│       ├── config/          # Temas, Cores (Design System)
-│       ├── features/        # Módulos isolados (auth, agenda, gestor...)
-│       └── store/           # Zustand para estado global
-│
-├── package.json             # 🚀 Root package (Concurrently config)
-└── README.md                # 📖 Você está aqui
+├── docs/                     # 📖 Documentação, Diagramas e Requisitos
+└── infra/                    # 🏗️ Infraestrutura e Docker Config
 ```
+
+### 📁 Organização de Pastas
+- **`docs/`**: Contém todos os arquivos de planejamento, diagramas de banco de dados (Mermaid) e requisitos do MVP.
+- **`infra/`**: Contém o arquivo `docker-compose.yml`, que serve para rodar a API em um ambiente isolado (container), facilitando o deploy futuro.
+- **`backend/`**: Servidor da aplicação.
+- **`mobile/`**: Aplicativo cliente.
 
 ---
 

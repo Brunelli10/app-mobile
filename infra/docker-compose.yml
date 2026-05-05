@@ -1,16 +1,16 @@
 version: '3.8'
 
 services:
-  backend-clinica:
+  backend:
     build:
-      context: ./backend-clinica
+      context: ../backend
       dockerfile: Dockerfile
     container_name: clinica-api
     ports:
       - "3000:3000"
     volumes:
-      - ./backend-clinica/prisma:/app/prisma
-      - ./backend-clinica/src:/app/src
+      - ../backend/prisma:/app/prisma
+      - ../backend/src:/app/src
     environment:
       - NODE_ENV=development
       - PORT=3000
