@@ -6,6 +6,7 @@
     "start": "concurrently -c \"cyan.bold,green.bold\" -n \"BACKEND,MOBILE\" \"npm run start:backend\" \"npm run start:mobile\"",
     "start:backend": "cd backend && npm run dev",
     "start:mobile": "cd mobile && npm start",
+    "start:web": "cd mobile && npm run web",
     "install:all": "npm install && cd backend && npm install && cd ../mobile && npm install",
     "db:push": "cd backend && npx prisma db push",
     "db:seed": "cd backend && npx prisma db seed"
