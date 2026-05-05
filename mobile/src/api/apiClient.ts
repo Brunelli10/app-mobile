@@ -13,7 +13,14 @@ export const api = axios.create({
 
 // ─── Interceptor de Request: Injetar Token JWT ───────────────────────────────
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('clinic_jwt_token');
+  let token = null;
+
+  if (Platform.OS === 'web') {
+    token = localStorage.getItem('clinic_jwt_token');
+  } else {
+    token = await SecureStore.getItemAsync('clinic_jwt_token');
+  }
+
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
