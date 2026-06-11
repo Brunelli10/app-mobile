@@ -68,6 +68,11 @@ model Paciente {
   responsavelCpf       String?
   responsavelTelefone  String?
 
+  // Dados do Cônjuge / Parceiro(a) (Caso o atendimento seja CASAL)
+  parceiroNome         String?
+  parceiroCpf          String?
+  parceiroTelefone     String?
+
   agendamentos AgendamentoPaciente[]
 }
 

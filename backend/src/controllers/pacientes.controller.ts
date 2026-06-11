@@ -65,7 +65,30 @@ export const getPacientePerfil = async (req: Request, res: Response) => {
     const presencas = sessoes.filter(s => s.status === 'CONCLUIDA').length;
     const faltas = sessoes.filter(s => s.status === 'FALTA').length;
 
-    res.json({ ...paciente, sessoes, stats: { totalSessoes, presencas, faltas, taxaPresenca: totalSessoes > 0 ? Math.round((presencas / totalSessoes) * 100) : 0 } });
+    const agendamentosAtivos = paciente.agendamentos
+      .filter(ap => ap.agendamento.status === 'CONFIRMADO')
+      .map(ap => ({
+        id: ap.agendamento.id,
+        sala: ap.agendamento.sala.nome,
+        estagiario: ap.agendamento.estagiario.usuario.nome,
+        horarioInicio: ap.agendamento.horarioInicio,
+        horarioFim: ap.agendamento.horarioFim,
+        diaSemana: ap.agendamento.diaSemana,
+        dataEspecifica: ap.agendamento.dataEspecifica,
+        tipo: ap.agendamento.tipo
+      }));
+
+    res.json({
+      ...paciente,
+      sessoes,
+      agendamentosAtivos,
+      stats: {
+        totalSessoes,
+        presencas,
+        faltas,
+        taxaPresenca: totalSessoes > 0 ? Math.round((presencas / totalSessoes) * 100) : 0
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar perfil do paciente' });
@@ -73,25 +96,71 @@ export const getPacientePerfil = async (req: Request, res: Response) => {
 };
 
 // ─── POST /pacientes ──────────────────────────────────────────────────────────
-// Pode ser usado por Estagiários e Gestores
 export const createPaciente = async (req: Request, res: Response) => {
   try {
-    const { nome, dataNascimento, cpf, telefone, tipoAtendimento, responsavelNome, responsavelCpf, responsavelTelefone } = req.body;
+    const {
+      nome,
+      dataNascimento,
+      cpf,
+      telefone,
+      tipoAtendimento,
+      responsavelNome,
+      responsavelCpf,
+      responsavelTelefone,
+      parceiroNome,
+      parceiroCpf,
+      parceiroTelefone
+    } = req.body;
 
     if (!nome || !dataNascimento || !cpf || !telefone || !tipoAtendimento) {
       return res.status(400).json({ error: 'Campos obrigatórios: nome, dataNascimento, cpf, telefone, tipoAtendimento.' });
     }
 
+    // Validações de formato e limites lógicos
+    if (!/^\d{11}$/.test(cpf)) {
+      return res.status(400).json({ error: 'CPF do paciente deve ter exatamente 11 dígitos numéricos.' });
+    }
+    if (!/^\d{10,11}$/.test(telefone)) {
+      return res.status(400).json({ error: 'Telefone do paciente deve ter 10 ou 11 dígitos numéricos.' });
+    }
+
     const nascimento = new Date(dataNascimento);
+    if (isNaN(nascimento.getTime())) {
+      return res.status(400).json({ error: 'Data de nascimento inválida.' });
+    }
+    if (nascimento > new Date()) {
+      return res.status(400).json({ error: 'Data de nascimento não pode ser no futuro.' });
+    }
+
     const idade = calcularIdade(nascimento);
     const isMenorDeIdade = idade < 18;
 
     // Regra de Negócio: Menor de idade PRECISA de responsável
     if (isMenorDeIdade && (!responsavelNome || !responsavelTelefone)) {
-      return res.status(422).json({ 
+      return res.status(422).json({
         error: `Paciente é menor de idade (${idade} anos). Nome e Telefone do Responsável são obrigatórios.`,
         menorDeIdade: true
       });
+    }
+
+    if (responsavelCpf && !/^\d{11}$/.test(responsavelCpf)) {
+      return res.status(400).json({ error: 'CPF do responsável deve ter exatamente 11 dígitos numéricos.' });
+    }
+    if (responsavelTelefone && !/^\d{10,11}$/.test(responsavelTelefone)) {
+      return res.status(400).json({ error: 'Telefone do responsável deve ter 10 ou 11 dígitos numéricos.' });
+    }
+
+    // Regra de Negócio: CASAL exige parceiro(a)
+    if (tipoAtendimento === 'CASAL') {
+      if (!parceiroNome || !parceiroCpf || !parceiroTelefone) {
+        return res.status(422).json({ error: 'Para atendimento de casal, Nome, CPF e Telefone do Cônjuge/Parceiro são obrigatórios.' });
+      }
+      if (!/^\d{11}$/.test(parceiroCpf)) {
+        return res.status(400).json({ error: 'CPF do Cônjuge/Parceiro deve ter exatamente 11 dígitos numéricos.' });
+      }
+      if (!/^\d{10,11}$/.test(parceiroTelefone)) {
+        return res.status(400).json({ error: 'Telefone do Cônjuge/Parceiro deve ter 10 ou 11 dígitos numéricos.' });
+      }
     }
 
     const paciente = await prisma.paciente.create({
@@ -104,7 +173,10 @@ export const createPaciente = async (req: Request, res: Response) => {
         ativo: true,
         responsavelNome: responsavelNome || null,
         responsavelCpf: responsavelCpf || null,
-        responsavelTelefone: responsavelTelefone || null
+        responsavelTelefone: responsavelTelefone || null,
+        parceiroNome: tipoAtendimento === 'CASAL' ? parceiroNome : null,
+        parceiroCpf: tipoAtendimento === 'CASAL' ? parceiroCpf : null,
+        parceiroTelefone: tipoAtendimento === 'CASAL' ? parceiroTelefone : null
       }
     });
 
@@ -115,6 +187,124 @@ export const createPaciente = async (req: Request, res: Response) => {
     }
     console.error(error);
     res.status(500).json({ error: 'Erro ao criar paciente' });
+  }
+};
+
+// ─── PUT /pacientes/:id ──────────────────────────────────────────────────────
+export const updatePaciente = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      nome,
+      dataNascimento,
+      cpf,
+      telefone,
+      tipoAtendimento,
+      responsavelNome,
+      responsavelCpf,
+      responsavelTelefone,
+      parceiroNome,
+      parceiroCpf,
+      parceiroTelefone
+    } = req.body;
+
+    if (!nome || !dataNascimento || !cpf || !telefone || !tipoAtendimento) {
+      return res.status(400).json({ error: 'Campos obrigatórios: nome, dataNascimento, cpf, telefone, tipoAtendimento.' });
+    }
+
+    // Validações de formato e limites lógicos
+    if (!/^\d{11}$/.test(cpf)) {
+      return res.status(400).json({ error: 'CPF do paciente deve ter exatamente 11 dígitos numéricos.' });
+    }
+    if (!/^\d{10,11}$/.test(telefone)) {
+      return res.status(400).json({ error: 'Telefone do paciente deve ter 10 ou 11 dígitos numéricos.' });
+    }
+
+    const nascimento = new Date(dataNascimento);
+    if (isNaN(nascimento.getTime())) {
+      return res.status(400).json({ error: 'Data de nascimento inválida.' });
+    }
+    if (nascimento > new Date()) {
+      return res.status(400).json({ error: 'Data de nascimento não pode ser no futuro.' });
+    }
+
+    const idade = calcularIdade(nascimento);
+    const isMenorDeIdade = idade < 18;
+
+    // Menor de idade exige responsável
+    if (isMenorDeIdade && (!responsavelNome || !responsavelTelefone)) {
+      return res.status(422).json({
+        error: `Paciente é menor de idade (${idade} anos). Nome e Telefone do Responsável são obrigatórios.`
+      });
+    }
+
+    if (responsavelCpf && !/^\d{11}$/.test(responsavelCpf)) {
+      return res.status(400).json({ error: 'CPF do responsável deve ter exatamente 11 dígitos numéricos.' });
+    }
+    if (responsavelTelefone && !/^\d{10,11}$/.test(responsavelTelefone)) {
+      return res.status(400).json({ error: 'Telefone do responsável deve ter 10 ou 11 dígitos numéricos.' });
+    }
+
+    // CASAL exige parceiro(a)
+    if (tipoAtendimento === 'CASAL') {
+      if (!parceiroNome || !parceiroCpf || !parceiroTelefone) {
+        return res.status(422).json({ error: 'Para atendimento de casal, Nome, CPF e Telefone do Cônjuge/Parceiro são obrigatórios.' });
+      }
+      if (!/^\d{11}$/.test(parceiroCpf)) {
+        return res.status(400).json({ error: 'CPF do Cônjuge/Parceiro deve ter exatamente 11 dígitos numéricos.' });
+      }
+      if (!/^\d{10,11}$/.test(parceiroTelefone)) {
+        return res.status(400).json({ error: 'Telefone do Cônjuge/Parceiro deve ter 10 ou 11 dígitos numéricos.' });
+      }
+    }
+
+    const pacienteAtualizado = await prisma.paciente.update({
+      where: { id: parseInt(id as string) },
+      data: {
+        nome,
+        dataNascimento: nascimento,
+        cpf,
+        telefone,
+        tipoAtendimento,
+        responsavelNome: isMenorDeIdade ? responsavelNome : null,
+        responsavelCpf: isMenorDeIdade ? (responsavelCpf || null) : null,
+        responsavelTelefone: isMenorDeIdade ? responsavelTelefone : null,
+        parceiroNome: tipoAtendimento === 'CASAL' ? parceiroNome : null,
+        parceiroCpf: tipoAtendimento === 'CASAL' ? parceiroCpf : null,
+        parceiroTelefone: tipoAtendimento === 'CASAL' ? parceiroTelefone : null
+      }
+    });
+
+    res.json(pacienteAtualizado);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Este CPF já está cadastrado no sistema.' });
+    }
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao atualizar dados do paciente.' });
+  }
+};
+
+// ─── DELETE /pacientes/:id ───────────────────────────────────────────────────
+export const deletePaciente = async (req: Request, res: Response) => {
+  try {
+    const userPerfil = (req as any).user.perfil;
+    if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
+      return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores podem inativar pacientes.' });
+    }
+
+    const { id } = req.params;
+
+    // Soft delete: set ativo = false
+    await prisma.paciente.update({
+      where: { id: parseInt(id as string) },
+      data: { ativo: false }
+    });
+
+    res.json({ message: 'Paciente inativado com sucesso.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao inativar paciente.' });
   }
 };
 

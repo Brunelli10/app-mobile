@@ -23,6 +23,7 @@ export function PacientesScreen() {
   const queryClient = useQueryClient();
   const navigation = useNavigation<any>();
   const [search, setSearch] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ADULTO' | 'CRIANCA' | 'CASAL'>('TODOS');
   const [modalVisible, setModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -35,6 +36,9 @@ export function PacientesScreen() {
   const [respNome, setRespNome] = useState('');
   const [respTelefone, setRespTelefone] = useState('');
   const [respCpf, setRespCpf] = useState('');
+  const [parceiroNome, setParceiroNome] = useState('');
+  const [parceiroCpf, setParceiroCpf] = useState('');
+  const [parceiroTelefone, setParceiroTelefone] = useState('');
 
   const idadeCalculada = calcularIdade(dataNascimento);
   const isMenor = dataNascimento.length >= 10 && idadeCalculada < 18;
@@ -55,29 +59,116 @@ export function PacientesScreen() {
     }
   });
 
-  const filteredPacientes = pacientes?.filter((p: any) =>
-    p.nome.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  const filteredPacientes = pacientes?.filter((p: any) => {
+    const matchesSearch = p.nome.toLowerCase().includes(search.toLowerCase());
+    const matchesFiltro = filtroTipo === 'TODOS' || p.tipoAtendimento === filtroTipo;
+    return matchesSearch && matchesFiltro;
+  }) || [];
 
   const resetForm = () => {
     setNome(''); setCpf(''); setTelefone(''); setDataNascimento('');
     setTipoAtendimento('ADULTO'); setRespNome(''); setRespTelefone(''); setRespCpf('');
+    setParceiroNome(''); setParceiroCpf(''); setParceiroTelefone('');
   };
 
   const handleCreatePaciente = async () => {
     if (!nome || !cpf || !telefone || !dataNascimento) {
       return Alert.alert('Atenção', 'Preencha todos os campos obrigatórios.');
     }
-    if (isMenor && (!respNome || !respTelefone)) {
-      return Alert.alert('Responsável Obrigatório', `O paciente tem ${idadeCalculada} anos e é menor de idade.\nPreencha o nome e telefone do responsável.`);
+
+    // Validar Nome
+    if (nome.trim().length < 3) {
+      return Alert.alert('Nome Inválido', 'O nome deve ter ao menos 3 caracteres.');
     }
+
+    // Validar CPF (apenas números, exatamente 11 dígitos)
+    const cleanCpf = cpf.replace(/\D/g, '');
+    if (cleanCpf.length !== 11) {
+      return Alert.alert('CPF Inválido', 'O CPF deve conter exatamente 11 dígitos numéricos.');
+    }
+
+    // Validar Telefone (apenas números, 10 ou 11 dígitos)
+    const cleanTelefone = telefone.replace(/\D/g, '');
+    if (cleanTelefone.length < 10 || cleanTelefone.length > 11) {
+      return Alert.alert('Telefone Inválido', 'O telefone deve conter 10 ou 11 dígitos numéricos (com DDD).');
+    }
+
+    // Validar Data de Nascimento (AAAA-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataNascimento)) {
+      return Alert.alert('Data de Nascimento Inválida', 'A data deve estar no formato AAAA-MM-DD (ex: 1990-06-15).');
+    }
+    const parts = dataNascimento.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const dateObj = new Date(year, month, day);
+    if (
+      dateObj.getFullYear() !== year ||
+      dateObj.getMonth() !== month ||
+      dateObj.getDate() !== day ||
+      dateObj > new Date()
+    ) {
+      return Alert.alert('Data de Nascimento Inválida', 'Insira uma data de nascimento real e no passado.');
+    }
+
+    const calculatedAge = calcularIdade(dataNascimento);
+    const isMenorDeIdade = calculatedAge < 18;
+
+    // Se menor, responsável é obrigatório
+    if (isMenorDeIdade) {
+      if (!respNome || !respTelefone) {
+        return Alert.alert('Responsável Obrigatório', `O paciente tem ${calculatedAge} anos (menor de idade).\nNome e Telefone do responsável são obrigatórios.`);
+      }
+      if (respNome.trim().length < 3) {
+        return Alert.alert('Responsável Inválido', 'O nome do responsável deve ter ao menos 3 caracteres.');
+      }
+      const cleanRespTel = respTelefone.replace(/\D/g, '');
+      if (cleanRespTel.length < 10 || cleanRespTel.length > 11) {
+        return Alert.alert('Telefone do Responsável Inválido', 'O telefone do responsável deve conter 10 ou 11 dígitos numéricos.');
+      }
+      if (respCpf) {
+        const cleanRespCpf = respCpf.replace(/\D/g, '');
+        if (cleanRespCpf.length !== 11) {
+          return Alert.alert('CPF do Responsável Inválido', 'O CPF do responsável deve conter exatamente 11 dígitos numéricos.');
+        }
+      }
+    }
+
+    let cleanParcCpf = '';
+    let cleanParcTel = '';
+
+    // Se Casal, cônjuge/parceiro(a) é obrigatório
+    if (tipoAtendimento === 'CASAL') {
+      if (!parceiroNome || !parceiroCpf || !parceiroTelefone) {
+        return Alert.alert('Cônjuge/Parceiro(a) Obrigatório', 'Para atendimento de casal, Nome, CPF e Telefone do cônjuge/parceiro são obrigatórios.');
+      }
+      if (parceiroNome.trim().length < 3) {
+        return Alert.alert('Cônjuge/Parceiro(a) Inválido', 'O nome do cônjuge/parceiro deve ter ao menos 3 caracteres.');
+      }
+      cleanParcCpf = parceiroCpf.replace(/\D/g, '');
+      if (cleanParcCpf.length !== 11) {
+        return Alert.alert('CPF do Cônjuge/Parceiro Inválido', 'O CPF do cônjuge/parceiro deve conter exatamente 11 dígitos numéricos.');
+      }
+      cleanParcTel = parceiroTelefone.replace(/\D/g, '');
+      if (cleanParcTel.length < 10 || cleanParcTel.length > 11) {
+        return Alert.alert('Telefone do Cônjuge/Parceiro Inválido', 'O telefone do cônjuge/parceiro deve conter 10 ou 11 dígitos numéricos.');
+      }
+    }
+
     setIsSaving(true);
     try {
       await api.post('/pacientes', {
-        nome, cpf, telefone, dataNascimento, tipoAtendimento,
-        responsavelNome: respNome || null,
-        responsavelCpf: respCpf || null,
-        responsavelTelefone: respTelefone || null
+        nome,
+        cpf: cleanCpf,
+        telefone: cleanTelefone,
+        dataNascimento,
+        tipoAtendimento,
+        responsavelNome: isMenorDeIdade ? respNome : null,
+        responsavelCpf: isMenorDeIdade && respCpf ? respCpf.replace(/\D/g, '') : null,
+        responsavelTelefone: isMenorDeIdade ? respTelefone.replace(/\D/g, '') : null,
+        parceiroNome: tipoAtendimento === 'CASAL' ? parceiroNome : null,
+        parceiroCpf: tipoAtendimento === 'CASAL' ? cleanParcCpf : null,
+        parceiroTelefone: tipoAtendimento === 'CASAL' ? cleanParcTel : null
       });
       queryClient.invalidateQueries({ queryKey: ['pacientes'] });
       setModalVisible(false);
@@ -146,6 +237,21 @@ export function PacientesScreen() {
         />
       </View>
 
+      {/* Filtros por Tipo de Atendimento */}
+      <View style={styles.filterContainer}>
+        {(['TODOS', 'ADULTO', 'CRIANCA', 'CASAL'] as const).map(tipo => (
+          <TouchableOpacity
+            key={tipo}
+            style={[styles.filterBtn, filtroTipo === tipo && styles.filterBtnActive]}
+            onPress={() => setFiltroTipo(tipo)}
+          >
+            <Text style={[styles.filterBtnText, filtroTipo === tipo && styles.filterBtnTextActive]}>
+              {tipo === 'TODOS' ? 'Todos' : tipo === 'CRIANCA' ? 'Criança' : tipo === 'CASAL' ? 'Casal' : 'Adulto'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* Lista */}
       {isLoading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -174,12 +280,19 @@ export function PacientesScreen() {
                   {item.responsavelNome && (
                     <Text style={styles.respTag}>👤 {item.responsavelNome}</Text>
                   )}
+                  {item.tipoAtendimento === 'CASAL' && item.parceiroNome && (
+                    <Text style={styles.parcTag}>💑 {item.parceiroNome}</Text>
+                  )}
                   {menorSemResp && (
                     <Text style={styles.alertaTag}>⚠️ Menor sem responsável!</Text>
                   )}
                 </View>
-                <View style={[styles.tag, { backgroundColor: item.tipoAtendimento === 'CRIANCA' ? '#FFF7ED' : '#EFF6FF' }]}>
-                  <Text style={[styles.tagText, { color: item.tipoAtendimento === 'CRIANCA' ? '#EA580C' : colors.primary }]}>{item.tipoAtendimento}</Text>
+                <View style={[styles.tag, {
+                  backgroundColor: item.tipoAtendimento === 'CRIANCA' ? '#FFF7ED' : (item.tipoAtendimento === 'CASAL' ? '#FDF2F8' : '#EFF6FF')
+                }]}>
+                  <Text style={[styles.tagText, {
+                    color: item.tipoAtendimento === 'CRIANCA' ? '#EA580C' : (item.tipoAtendimento === 'CASAL' ? '#DB2777' : colors.primary)
+                  }]}>{item.tipoAtendimento}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -198,16 +311,24 @@ export function PacientesScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Nome Completo *</Text>
+              <Text style={styles.inputLabel}>
+                {tipoAtendimento === 'CASAL' ? 'Nome (Quem iniciou o contato) *' : 'Nome Completo *'}
+              </Text>
               <TextInput style={styles.input} placeholder="Ex: Ana Maria Costa" value={nome} onChangeText={setNome} />
 
-              <Text style={styles.inputLabel}>CPF *</Text>
+              <Text style={styles.inputLabel}>
+                {tipoAtendimento === 'CASAL' ? 'CPF (Quem iniciou o contato) *' : 'CPF *'}
+              </Text>
               <TextInput style={styles.input} placeholder="00000000000" keyboardType="numeric" value={cpf} onChangeText={setCpf} />
 
-              <Text style={styles.inputLabel}>Telefone *</Text>
+              <Text style={styles.inputLabel}>
+                {tipoAtendimento === 'CASAL' ? 'Telefone (Quem iniciou o contato) *' : 'Telefone *'}
+              </Text>
               <TextInput style={styles.input} placeholder="11999990000" keyboardType="phone-pad" value={telefone} onChangeText={setTelefone} />
 
-              <Text style={styles.inputLabel}>Data de Nascimento * (AAAA-MM-DD)</Text>
+              <Text style={styles.inputLabel}>
+                {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) * (AAAA-MM-DD)' : 'Data de Nascimento * (AAAA-MM-DD)'}
+              </Text>
               <TextInput style={styles.input} placeholder="1990-06-15" value={dataNascimento} onChangeText={setDataNascimento} />
 
               {isMenor && (
@@ -230,18 +351,41 @@ export function PacientesScreen() {
                 ))}
               </View>
 
-              <View style={styles.sectionDivider}>
-                <Text style={styles.sectionLabel}>Responsável {isMenor ? '(Obrigatório ⚠️)' : '(Opcional)'}</Text>
-              </View>
+              {/* Responsável (Exibido apenas para Crianças ou Menores) */}
+              {(isMenor || tipoAtendimento === 'CRIANCA') && (
+                <View>
+                  <View style={styles.sectionDivider}>
+                    <Text style={styles.sectionLabel}>Responsável (Obrigatório ⚠️)</Text>
+                  </View>
 
-              <Text style={styles.inputLabel}>Nome {isMenor ? '*' : ''}</Text>
-              <TextInput style={[styles.input, isMenor && !respNome && styles.inputAlerta]} placeholder="Ex: João da Silva" value={respNome} onChangeText={setRespNome} />
+                  <Text style={styles.inputLabel}>Nome do Responsável *</Text>
+                  <TextInput style={[styles.input, !respNome && styles.inputAlerta]} placeholder="Ex: João da Silva" value={respNome} onChangeText={setRespNome} />
 
-              <Text style={styles.inputLabel}>Telefone {isMenor ? '*' : ''}</Text>
-              <TextInput style={[styles.input, isMenor && !respTelefone && styles.inputAlerta]} placeholder="11999990000" keyboardType="phone-pad" value={respTelefone} onChangeText={setRespTelefone} />
+                  <Text style={styles.inputLabel}>Telefone do Responsável *</Text>
+                  <TextInput style={[styles.input, !respTelefone && styles.inputAlerta]} placeholder="11999990000" keyboardType="phone-pad" value={respTelefone} onChangeText={setRespTelefone} />
 
-              <Text style={styles.inputLabel}>CPF do Responsável</Text>
-              <TextInput style={styles.input} placeholder="00000000000" keyboardType="numeric" value={respCpf} onChangeText={setRespCpf} />
+                  <Text style={styles.inputLabel}>CPF do Responsável (Opcional)</Text>
+                  <TextInput style={styles.input} placeholder="00000000000" keyboardType="numeric" value={respCpf} onChangeText={setRespCpf} />
+                </View>
+              )}
+
+              {/* Cônjuge / Parceiro (Exibido apenas para Casal) */}
+              {tipoAtendimento === 'CASAL' && (
+                <View>
+                  <View style={styles.sectionDivider}>
+                    <Text style={styles.sectionLabel}>Cônjuge / Parceiro(a) (Obrigatório ⚠️)</Text>
+                  </View>
+
+                  <Text style={styles.inputLabel}>Nome do(a) Parceiro(a) *</Text>
+                  <TextInput style={[styles.input, !parceiroNome && styles.inputAlerta]} placeholder="Ex: Carlos Oliveira" value={parceiroNome} onChangeText={setParceiroNome} />
+
+                  <Text style={styles.inputLabel}>CPF do(a) Parceiro(a) *</Text>
+                  <TextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} placeholder="00000000000" keyboardType="numeric" value={parceiroCpf} onChangeText={setParceiroCpf} />
+
+                  <Text style={styles.inputLabel}>Telefone do(a) Parceiro(a) *</Text>
+                  <TextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} placeholder="11999990000" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={setParceiroTelefone} />
+                </View>
+              )}
 
               <TouchableOpacity style={styles.submitBtn} onPress={handleCreatePaciente} disabled={isSaving}>
                 {isSaving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitText}>Cadastrar Paciente</Text>}
@@ -266,6 +410,11 @@ const styles = StyleSheet.create({
   pendentesAction: { color: colors.primary, fontWeight: 'bold', fontSize: 13 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', marginHorizontal: 20, marginTop: 16, paddingHorizontal: 16, borderRadius: 12, height: 48, elevation: 1 },
   searchInput: { flex: 1, marginLeft: 12, fontSize: 16 },
+  filterContainer: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 12, gap: 6 },
+  filterBtn: { flex: 1, backgroundColor: '#FFF', paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#EAEEF3', elevation: 1 },
+  filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterBtnText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
+  filterBtnTextActive: { color: '#FFF' },
   list: { padding: 20, paddingBottom: 100 },
   emptyState: { alignItems: 'center', paddingTop: 60 },
   emptyText: { color: colors.textSecondary, marginTop: 16, fontSize: 15 },
@@ -277,6 +426,7 @@ const styles = StyleSheet.create({
   nomeText: { fontSize: 16, fontWeight: '700', color: colors.textHeader },
   sub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   respTag: { fontSize: 11, color: '#10B981', marginTop: 4, fontWeight: '600' },
+  parcTag: { fontSize: 11, color: '#DB2777', marginTop: 4, fontWeight: '600' },
   alertaTag: { fontSize: 11, color: '#EA580C', marginTop: 4, fontWeight: '600' },
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   tagText: { fontSize: 11, fontWeight: '700' },

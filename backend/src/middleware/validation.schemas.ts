@@ -19,12 +19,15 @@ export const criarAgendamentoSchema = z.object({
 export const criarPacienteSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter ao menos 3 caracteres'),
   cpf: z.string().length(11, 'CPF deve ter exatamente 11 dígitos (sem pontuação)').regex(/^\d+$/, 'CPF deve conter apenas números'),
-  telefone: z.string().min(10, 'Telefone inválido').max(11),
+  telefone: z.string().min(10, 'Telefone inválido').max(11).regex(/^\d+$/, 'Telefone deve conter apenas números'),
   dataNascimento: dateStringSchema,
   tipoAtendimento: z.enum(['ADULTO', 'CRIANCA', 'CASAL']),
   responsavelNome: z.string().optional().nullable(),
   responsavelCpf: z.string().optional().nullable(),
-  responsavelTelefone: z.string().optional().nullable()
+  responsavelTelefone: z.string().optional().nullable(),
+  parceiroNome: z.string().optional().nullable(),
+  parceiroCpf: z.string().optional().nullable(),
+  parceiroTelefone: z.string().optional().nullable()
 });
 
 // ─── Salas ────────────────────────────────────────────────────────────────────
