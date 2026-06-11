@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { Alert, Platform } from 'react-native';
 
 export const api = axios.create({
-  baseURL: 'http://192.168.15.6:3000/api',
+  baseURL: 'http://192.168.68.156:3000/api',
   timeout: 10000, // 10 segundos de timeout
 });
 
