@@ -1,16 +1,21 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from '../store/useAuthStore';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 export const api = axios.create({
-  baseURL: 'http://192.168.15.3:3000/api',
+  baseURL: 'http://192.168.15.6:3000/api',
   timeout: 10000, // 10 segundos de timeout
 });
 
 // ─── Interceptor de Request: Injetar Token JWT ───────────────────────────────
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('clinic_jwt_token');
+  let token = null;
+  if (Platform.OS === 'web') {
+    token = localStorage.getItem('clinic_jwt_token');
+  } else {
+    token = await SecureStore.getItemAsync('clinic_jwt_token');
+  }
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }

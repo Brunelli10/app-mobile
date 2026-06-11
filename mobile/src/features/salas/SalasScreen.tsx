@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -17,20 +17,24 @@ LocaleConfig.locales['pt-br'] = {
 };
 LocaleConfig.defaultLocale = 'pt-br';
 
-const getWeekDays = () => {
-  const dayNames = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-  const dates = [];
-  const today = new Date();
-  for (let i = -3; i <= 10; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push({
-      dayOfWeek: dayNames[d.getDay()],
-      dayNumber: d.getDate(),
-      fullString: d.toISOString().split('T')[0]
-    });
-  }
-  return dates;
+const DAY_NAMES_SHORT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+const getWeekOf = (referenceDate: Date) => {
+  const day = referenceDate.getDay();
+  const monday = new Date(referenceDate);
+  monday.setDate(referenceDate.getDate() - ((day === 0 ? 7 : day) - 1));
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return {
+      label: DAY_NAMES_SHORT[(d.getDay())],
+      fullString: d.toISOString().split('T')[0],
+      dayNum: d.getDate(),
+      isWeekend: d.getDay() === 0 || d.getDay() === 6
+    };
+  });
 };
 
 const TIPO_LABELS: Record<string, string> = {
@@ -47,13 +51,46 @@ const TIPO_COLORS: Record<string, string> = {
 
 export function SalasScreen() {
   const { data: salas, isLoading } = useQuery({ queryKey: ['salas'], queryFn: async () => (await api.get('/salas')).data });
+  const { data: agenda } = useQuery({
+    queryKey: ['meus-agendamentos'],
+    queryFn: async () => (await api.get('/meus-agendamentos')).data
+  });
   const queryClient = useQueryClient();
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
 
   const [calendarMode, setCalendarMode] = useState<'week' | 'month'>('week');
-  const [weekDays] = useState(getWeekDays());
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [weekRef, setWeekRef] = useState(new Date());
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const weekDays = getWeekOf(weekRef);
+
+  const markedDates: Record<string, any> = {};
+  agenda?.forEach((ag: any) => {
+    if (ag.dataRaw) {
+      markedDates[ag.dataRaw] = ag.dataRaw === selectedDate
+        ? { selected: true, selectedColor: colors.primary, marked: true, dotColor: '#FFF' }
+        : { marked: true, dotColor: colors.primary };
+    }
+  });
+  if (!markedDates[selectedDate]) {
+    markedDates[selectedDate] = { selected: true, selectedColor: colors.primary };
+  }
+
+  const navigateWeek = (dir: 1 | -1) => {
+    const next = new Date(weekRef);
+    next.setDate(weekRef.getDate() + dir * 7);
+    setWeekRef(next);
+  };
+
+  const firstDay = weekDays[0];
+  const lastDay = weekDays[6];
+  const firstDate = new Date(firstDay.fullString + 'T12:00');
+  const lastDate = new Date(lastDay.fullString + 'T12:00');
+  const weekLabel = firstDate.getMonth() === lastDate.getMonth()
+    ? `${MONTH_NAMES[firstDate.getMonth()]} ${firstDate.getFullYear()}`
+    : `${MONTH_NAMES[firstDate.getMonth()]}–${MONTH_NAMES[lastDate.getMonth()]} ${lastDate.getFullYear()}`;
 
   // Modal de Nova Sala
   const [modalVisible, setModalVisible] = useState(false);
@@ -79,6 +116,47 @@ export function SalasScreen() {
       Alert.alert('Erro', e.response?.data?.error || 'Não foi possível criar a sala.');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteSala = (salaId: number, salaName: string) => {
+    const message = `Tem certeza que deseja excluir a sala "${salaName}"?\n\nEsta ação não poderá ser desfeita.`;
+
+    const performDelete = async () => {
+      try {
+        await api.delete(`/salas/${salaId}`);
+        queryClient.invalidateQueries({ queryKey: ['salas'] });
+        if (Platform.OS === 'web') {
+          alert('Sala excluída com sucesso.');
+        } else {
+          Alert.alert('Sucesso', 'Sala excluída com sucesso.');
+        }
+      } catch (e: any) {
+        if (Platform.OS === 'web') {
+          alert(e.response?.data?.error || 'Não foi possível excluir a sala.');
+        } else {
+          Alert.alert('Erro', e.response?.data?.error || 'Não foi possível excluir a sala.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        'Confirmar Exclusão',
+        message,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: performDelete
+          }
+        ]
+      );
     }
   };
 
@@ -123,36 +201,64 @@ export function SalasScreen() {
         </View>
 
         {calendarMode === 'week' ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
-            {weekDays.map((d, i) => {
-              const isActive = d.fullString === selectedDate;
-              const isToday = d.fullString === new Date().toISOString().split('T')[0];
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={[styles.dayCol, isActive && styles.dayColActive]}
-                  onPress={() => setSelectedDate(d.fullString)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.dayText, isActive && styles.dayTextActive]}>{d.dayOfWeek}</Text>
-                  <Text style={[styles.dateNum, isActive && styles.dateNumActive]}>{d.dayNumber}</Text>
-                  {isToday && !isActive && <View style={styles.todayDot} />}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.weekContainer}>
+            {/* Navegação de semana */}
+            <View style={styles.weekNav}>
+              <TouchableOpacity style={styles.navArrow} onPress={() => navigateWeek(-1)}>
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <Text style={styles.weekLabel}>{weekLabel}</Text>
+              <TouchableOpacity style={styles.navArrow} onPress={() => navigateWeek(1)}>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Grade Seg–Dom */}
+            <View style={styles.weekStrip}>
+              {weekDays.map((d: any, i: number) => {
+                const isActive = d.fullString === selectedDate;
+                const isToday = d.fullString === todayStr;
+                const hasSession = agenda?.some((ag: any) => ag.dataRaw === d.fullString);
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.dayCol,
+                      isActive && styles.dayColActive,
+                      d.isWeekend && !isActive && styles.dayColWeekend
+                    ]}
+                    onPress={() => setSelectedDate(d.fullString)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.dayLabel,
+                      isActive && styles.dayLabelActive,
+                      d.isWeekend && !isActive && styles.dayLabelWeekend
+                    ]}>{d.label}</Text>
+                    <Text style={[
+                      styles.dayNum,
+                      isActive && styles.dayNumActive,
+                      isToday && !isActive && styles.dayNumToday
+                    ]}>{d.dayNum}</Text>
+                    {hasSession && !isActive && <View style={styles.sessionDot} />}
+                    {hasSession && isActive && <View style={styles.sessionDotActive} />}
+                    {!hasSession && <View style={{ height: 5 }} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
         ) : (
           <View style={styles.calendarWrapper}>
             <Calendar
               current={selectedDate}
               onDayPress={(day: any) => setSelectedDate(day.dateString)}
-              markedDates={{
-                [selectedDate]: { selected: true, selectedColor: colors.primary }
-              }}
+              markedDates={markedDates}
               theme={{
                 selectedDayBackgroundColor: colors.primary,
                 todayTextColor: colors.primary,
                 arrowColor: colors.primary,
+                dotColor: colors.primary,
                 textDayFontWeight: '600',
               }}
             />
@@ -203,6 +309,17 @@ export function SalasScreen() {
                     <View style={styles.roomBadge}>
                       <Text style={styles.roomBadgeText}>{sala.totalAgendamentos} agend.</Text>
                     </View>
+                    {isGestorOrRoot && (
+                      <TouchableOpacity
+                        style={styles.deleteRoomCardBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSala(sala.id, sala.nome);
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    )}
                     <Ionicons name="chevron-forward" size={16} color="#CBD5E1" style={{ marginLeft: 8 }} />
                   </View>
                   <View style={styles.roomFooter}>
@@ -278,15 +395,22 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: '#FFF', elevation: 2 },
   toggleText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   toggleTextActive: { color: colors.primary },
-  weekStrip: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, flexDirection: 'row', elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 3 }, marginBottom: 16 },
-  dayCol: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, position: 'relative' },
-  dayColActive: { backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: 14 },
-  dayText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 },
-  dayTextActive: { color: '#FFF', fontWeight: 'bold' },
-  dateNum: { color: colors.textHeader, fontSize: 16, fontWeight: '600' },
-  dateNumActive: { color: '#FFF', fontWeight: '800' },
-  todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.primary, marginTop: 4 },
+  weekContainer: { backgroundColor: '#FFF', borderRadius: 16, paddingBottom: 12, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 3 } },
+  weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 },
+  navArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+  weekLabel: { fontSize: 15, fontWeight: '700', color: colors.primaryDark },
+  weekStrip: { flexDirection: 'row', paddingHorizontal: 10, gap: 4 },
+  dayCol: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 14 },
+  dayColActive: { backgroundColor: colors.primary },
+  dayColWeekend: { opacity: 0.6 },
+  dayLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, marginBottom: 4, textTransform: 'uppercase' },
+  dayLabelActive: { color: '#FFF' },
+  dayLabelWeekend: { color: colors.primary },
+  dayNum: { fontSize: 16, fontWeight: '700', color: colors.textHeader },
+  dayNumActive: { color: '#FFF' },
+  dayNumToday: { color: colors.primary },
   calendarWrapper: { backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', elevation: 2, marginBottom: 16, padding: 6 },
+  deleteRoomCardBtn: { padding: 6, borderRadius: 8, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
   selectedDateLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', marginBottom: 14, textTransform: 'capitalize' },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   addRoomBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignItems: 'center', gap: 4 },
@@ -314,5 +438,7 @@ const styles = StyleSheet.create({
   typeBtn: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#EAEEF3', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   typeText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   submitBtn: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 24, marginBottom: 20 },
-  submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
+  submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  sessionDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.primary, marginTop: 3 },
+  sessionDotActive: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.7)', marginTop: 3 }
 });

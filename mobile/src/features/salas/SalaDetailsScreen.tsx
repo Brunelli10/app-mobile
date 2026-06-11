@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Modal, TextInput, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../config/theme';
@@ -7,6 +7,7 @@ import { Button } from '../../components/Button';
 import { api } from '../../api/apiClient';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '../../store/useAuthStore';
 
 LocaleConfig.locales['pt-br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
@@ -17,20 +18,24 @@ LocaleConfig.locales['pt-br'] = {
 };
 LocaleConfig.defaultLocale = 'pt-br';
 
-const getNextDays = () => {
-  const dayNames = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-  const dates = [];
-  const today = new Date();
-  for (let i = 0; i <= 30; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    dates.push({
-      dayOfWeek: dayNames[d.getDay()],
-      dayNumber: d.getDate(),
-      fullString: d.toISOString().split('T')[0]
-    });
-  }
-  return dates;
+const DAY_NAMES_SHORT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+const getWeekOf = (referenceDate: Date) => {
+  const day = referenceDate.getDay();
+  const monday = new Date(referenceDate);
+  monday.setDate(referenceDate.getDate() - ((day === 0 ? 7 : day) - 1));
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return {
+      label: DAY_NAMES_SHORT[(d.getDay())],
+      fullString: d.toISOString().split('T')[0],
+      dayNum: d.getDate(),
+      isWeekend: d.getDay() === 0 || d.getDay() === 6
+    };
+  });
 };
 
 // Gerar as datas do ciclo (para visualização do resumo)
@@ -46,19 +51,196 @@ const getCycleDates = (startDate: string, weeks: number): string[] => {
 };
 
 export function SalaDetailsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const { salaId, salaName } = route.params || {};
+  const { user } = useAuthStore();
+  const isGestorOrRoot = user?.perfil === 'GESTOR' || user?.perfil === 'ROOT';
 
   const [viewMode, setViewMode] = useState<'month' | 'week'>('week');
-  const weekDays = getNextDays();
+  const [weekRef, setWeekRef] = useState(new Date());
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [weeksCount, setWeeksCount] = useState(1);
   const [pacienteId, setPacienteId] = useState<number | null>(null);
   const [isBooking, setIsBooking] = useState(false);
+
+  const weekDays = getWeekOf(weekRef);
+
+  const navigateWeek = (dir: 1 | -1) => {
+    const next = new Date(weekRef);
+    next.setDate(weekRef.getDate() + dir * 7);
+    setWeekRef(next);
+  };
+
+  const firstDay = weekDays[0];
+  const lastDay = weekDays[6];
+  const firstDate = new Date(firstDay.fullString + 'T12:00');
+  const lastDate = new Date(lastDay.fullString + 'T12:00');
+  const weekLabel = firstDate.getMonth() === lastDate.getMonth()
+    ? `${MONTH_NAMES[firstDate.getMonth()]} ${firstDate.getFullYear()}`
+    : `${MONTH_NAMES[firstDate.getMonth()]}–${MONTH_NAMES[lastDate.getMonth()]} ${lastDate.getFullYear()}`;
+
+  const handleDeleteSala = () => {
+    const message = `Tem certeza que deseja excluir a sala "${salaName}"?\n\nEsta ação não poderá ser desfeita.`;
+
+    const performDelete = async () => {
+      try {
+        await api.delete(`/salas/${salaId}`);
+        queryClient.invalidateQueries({ queryKey: ['salas'] });
+        if (Platform.OS === 'web') {
+          alert('Sala excluída com sucesso.');
+        } else {
+          Alert.alert('Sucesso', 'Sala excluída com sucesso.');
+        }
+        navigation.goBack();
+      } catch (e: any) {
+        if (Platform.OS === 'web') {
+          alert(e.response?.data?.error || 'Não foi possível excluir a sala.');
+        } else {
+          Alert.alert('Erro', e.response?.data?.error || 'Não foi possível excluir a sala.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        'Confirmar Exclusão',
+        message,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: performDelete
+          }
+        ]
+      );
+    }
+  };
+
+  const handleCancelAgendamento = async (agendamentoId: number) => {
+    try {
+      await api.delete(`/agendamentos/${agendamentoId}`);
+      queryClient.invalidateQueries({ queryKey: ['disponibilidade'] });
+      queryClient.invalidateQueries({ queryKey: ['meus-agendamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['salas'] });
+      if (Platform.OS === 'web') {
+        alert('Agendamento cancelado com sucesso.');
+      } else {
+        Alert.alert('Sucesso', 'Agendamento cancelado com sucesso.');
+      }
+    } catch (e: any) {
+      if (Platform.OS === 'web') {
+        alert(e.response?.data?.error || 'Erro ao cancelar agendamento.');
+      } else {
+        Alert.alert('Erro', e.response?.data?.error || 'Erro ao cancelar agendamento.');
+      }
+    }
+  };
+
+  const handleBooking = async () => {
+    if (!selectedDate) {
+      if (Platform.OS === 'web') alert('Selecione uma data.');
+      else Alert.alert('Atenção', 'Selecione uma data.');
+      return;
+    }
+    if (!selectedTime) {
+      if (Platform.OS === 'web') alert('Selecione um horário.');
+      else Alert.alert('Atenção', 'Selecione um horário.');
+      return;
+    }
+    if (!pacienteId) {
+      if (Platform.OS === 'web') alert('Selecione um paciente.');
+      else Alert.alert('Atenção', 'Selecione um paciente.');
+      return;
+    }
+
+    const slotInfo = disponibilidade?.find((s: any) => s.horario === selectedTime);
+    if (slotInfo?.ocupado) {
+      const msg = `Este horário já está reservado por ${slotInfo.estagiario}. Escolha outro.`;
+      if (Platform.OS === 'web') alert(msg);
+      else Alert.alert('Horário Ocupado', msg);
+      return;
+    }
+
+    const message = `Sala: ${salaName}\nData: ${selectedDate}\nHorário: ${selectedTime}\nCiclo: ${weeksCount} semana(s)\n\nDeseja confirmar?`;
+
+    const performSubmit = async (skipConflicts = false) => {
+      setIsBooking(true);
+      try {
+        await api.post('/agendamentos', { 
+          salaId, 
+          horarioInicio: selectedTime, 
+          weeksCount, 
+          pacienteId, 
+          dataInicio: selectedDate,
+          skipConflicts 
+        });
+        queryClient.invalidateQueries({ queryKey: ['disponibilidade'] });
+        queryClient.invalidateQueries({ queryKey: ['meus-agendamentos'] });
+        queryClient.invalidateQueries({ queryKey: ['salas'] });
+        const successMsg = `${weeksCount} sessão(ões) registrada(s) com sucesso.`;
+        if (Platform.OS === 'web') {
+          alert(successMsg);
+        } else {
+          Alert.alert('✅ Agendado!', successMsg);
+        }
+        navigation.goBack();
+      } catch (e: any) {
+        const errorData = e?.response?.data;
+        if (e?.response?.status === 409 && errorData?.conflicts) {
+          const conflictList = errorData.conflicts.map((c: any) => `• ${c.date}: ${c.reason}`).join('\n');
+          const askMsg = `Conflitos no ciclo detectados:\n\n${conflictList}\n\nDeseja agendar apenas as semanas disponíveis (Ciclo Flexível)?`;
+          
+          if (Platform.OS === 'web') {
+            if (window.confirm(askMsg)) {
+              performSubmit(true);
+            }
+          } else {
+            Alert.alert(
+              '⚠️ Conflito no Ciclo',
+              askMsg,
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Agendar Semanas Livres', style: 'default', onPress: () => performSubmit(true) }
+              ]
+            );
+          }
+        } else {
+          const errorMsg = errorData?.error || 'Erro ao agendar.';
+          if (Platform.OS === 'web') {
+            alert(errorMsg);
+          } else {
+            Alert.alert('Conflito Detectado', errorMsg);
+          }
+        }
+      } finally {
+        setIsBooking(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        performSubmit();
+      }
+    } else {
+      Alert.alert(
+        'Confirmar Agendamento',
+        message,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Confirmar', onPress: () => performSubmit() }
+        ]
+      );
+    }
+  };
 
   // Modal de Responsável
   const [respModalVisible, setRespModalVisible] = useState(false);
@@ -82,42 +264,6 @@ export function SalaDetailsScreen() {
 
   // Calcular datas do ciclo para o resumo visual
   const cycleDates = selectedDate && weeksCount > 1 ? getCycleDates(selectedDate, weeksCount) : [];
-
-  const handleBooking = async () => {
-    if (!selectedDate) return Alert.alert('Atenção', 'Selecione uma data.');
-    if (!selectedTime) return Alert.alert('Atenção', 'Selecione um horário.');
-    if (!pacienteId) return Alert.alert('Atenção', 'Selecione um paciente.');
-
-    const slotInfo = disponibilidade?.find((s: any) => s.horario === selectedTime);
-    if (slotInfo?.ocupado) {
-      return Alert.alert('Horário Ocupado', `Este horário já está reservado por ${slotInfo.estagiario}. Escolha outro.`);
-    }
-
-    Alert.alert(
-      'Confirmar Agendamento',
-      `Sala: ${salaName}\nData: ${selectedDate}\nHorário: ${selectedTime}\nCiclo: ${weeksCount} semana(s)\n\nDeseja confirmar?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            setIsBooking(true);
-            try {
-              await api.post('/agendamentos', { salaId, horarioInicio: selectedTime, weeksCount, pacienteId, dataInicio: selectedDate });
-              queryClient.invalidateQueries({ queryKey: ['disponibilidade'] });
-              queryClient.invalidateQueries({ queryKey: ['meus-agendamentos'] });
-              Alert.alert('✅ Agendado!', `${weeksCount} sessão(ões) registrada(s) com sucesso.`);
-              navigation.goBack();
-            } catch (e: any) {
-              Alert.alert('Conflito Detectado', e?.response?.data?.error || 'Erro ao agendar.');
-            } finally {
-              setIsBooking(false);
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const handleSaveResponsavel = async () => {
     if (!respNome || !respTelefone) return Alert.alert('Atenção', 'Preencha o Nome e o Telefone.');
@@ -145,7 +291,13 @@ export function SalaDetailsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textHeader} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{salaName || 'Agendamento'}</Text>
-        <View style={{ width: 40 }} />
+        {isGestorOrRoot ? (
+          <TouchableOpacity style={styles.deleteHeaderButton} onPress={handleDeleteSala}>
+            <Ionicons name="trash-outline" size={22} color="#EF4444" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -243,19 +395,54 @@ export function SalaDetailsScreen() {
             />
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekStrip}>
-            {weekDays.map((d, i) => {
-              const isActive = d.fullString === selectedDate;
-              const isToday = d.fullString === todayStr;
-              const isCycle = cycleDates.includes(d.fullString) && !isActive;
-              return (
-                <TouchableOpacity key={i} style={[styles.dayCol, isActive && styles.dayColActive, isCycle && styles.dayColCycle]} onPress={() => setSelectedDate(d.fullString)}>
-                  <Text style={[styles.dayText, isActive && styles.textWhite, isCycle && styles.dayTextCycle]}>{d.dayOfWeek}</Text>
-                  <Text style={[styles.dateNum, isActive && styles.textWhite, isToday && !isActive && { color: colors.primary }, isCycle && styles.dayTextCycle]}>{d.dayNumber}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.weekContainer}>
+            {/* Navegação de semana */}
+            <View style={styles.weekNav}>
+              <TouchableOpacity style={styles.navArrow} onPress={() => navigateWeek(-1)}>
+                <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <Text style={styles.weekLabel}>{weekLabel}</Text>
+              <TouchableOpacity style={styles.navArrow} onPress={() => navigateWeek(1)}>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Grade Seg–Dom */}
+            <View style={styles.weekStrip}>
+              {weekDays.map((d: any, i: number) => {
+                const isActive = d.fullString === selectedDate;
+                const isToday = d.fullString === todayStr;
+                const isCycle = cycleDates.includes(d.fullString) && !isActive;
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.dayCol,
+                      isActive && styles.dayColActive,
+                      isCycle && styles.dayColCycle,
+                      d.isWeekend && !isActive && !isCycle && styles.dayColWeekend
+                    ]}
+                    onPress={() => setSelectedDate(d.fullString)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.dayLabel,
+                      isActive && styles.dayLabelActive,
+                      isCycle && styles.dayLabelCycle,
+                      d.isWeekend && !isActive && !isCycle && styles.dayLabelWeekend
+                    ]}>{d.label}</Text>
+                    <Text style={[
+                      styles.dayNum,
+                      isActive && styles.dayNumActive,
+                      isToday && !isActive && !isCycle && styles.dayNumToday,
+                      isCycle && styles.dayNumCycle
+                    ]}>{d.dayNum}</Text>
+                    <View style={{ height: 5 }} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
         )}
 
         {/* ─── 3. Horário com disponibilidade visual ────────────── */}
@@ -282,13 +469,40 @@ export function SalaDetailsScreen() {
                   ]}
                   onPress={() => {
                     if (isOcupado) {
-                      Alert.alert('Horário Ocupado', `Reservado por: ${slot.estagiario}\nPaciente(s): ${slot.pacientes?.join(', ')}`);
+                      const msg = `Reservado por: ${slot.estagiario}\nPaciente(s): ${slot.pacientes?.join(', ')}`;
+                      if (isGestorOrRoot) {
+                        if (Platform.OS === 'web') {
+                          const conf = window.confirm(`${msg}\n\nDeseja excluir/cancelar este agendamento?`);
+                          if (conf) {
+                            handleCancelAgendamento(slot.agendamentoId);
+                          }
+                        } else {
+                          Alert.alert(
+                            'Horário Ocupado',
+                            `${msg}\n\nVocê deseja excluir este agendamento da clínica?`,
+                            [
+                              { text: 'Voltar', style: 'cancel' },
+                              {
+                                text: 'Excluir Agendamento',
+                                style: 'destructive',
+                                onPress: () => handleCancelAgendamento(slot.agendamentoId)
+                              }
+                            ]
+                          );
+                        }
+                      } else {
+                        if (Platform.OS === 'web') {
+                          alert(msg);
+                        } else {
+                          Alert.alert('Horário Ocupado', msg);
+                        }
+                      }
                     } else {
                       setSelectedTime(slot.horario);
                     }
                   }}
-                  disabled={isOcupado && !isSelected}
-                  activeOpacity={isOcupado ? 1 : 0.7}
+                  disabled={false}
+                  activeOpacity={0.7}
                 >
                   {isOcupado && <Ionicons name="lock-closed" size={11} color="#94A3B8" style={{ marginBottom: 2 }} />}
                   <Text style={[styles.slotText, isOcupado && styles.slotTextOcupado, isSelected && styles.slotTextActive]}>
@@ -402,12 +616,24 @@ const styles = StyleSheet.create({
   addRespBtnOptional: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8, gap: 4 },
   addRespTextOptional: { color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '600' },
   calendarWrapper: { backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', marginBottom: 24, elevation: 1 },
-  weekStrip: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, flexDirection: 'row', elevation: 1, marginBottom: 24, gap: 2 },
-  dayCol: { alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, borderRadius: 18, minWidth: 42 },
+  weekContainer: { backgroundColor: '#FFF', borderRadius: 16, borderBottomWidth: 1, borderColor: '#EAEEF3', paddingBottom: 12, marginBottom: 24 },
+  weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 },
+  navArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+  weekLabel: { fontSize: 15, fontWeight: '700', color: colors.primaryDark },
+  weekStrip: { flexDirection: 'row', paddingHorizontal: 10, gap: 4 },
+  dayCol: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 14 },
   dayColActive: { backgroundColor: colors.primary },
-  dayColCycle: { backgroundColor: colors.primary + '20', borderWidth: 1, borderColor: colors.primary },
-  dayText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  dayTextCycle: { color: colors.primary },
+  dayColWeekend: { opacity: 0.6 },
+  dayColCycle: { backgroundColor: colors.primary + '15', borderWidth: 1, borderColor: colors.primary },
+  dayLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, marginBottom: 4, textTransform: 'uppercase' },
+  dayLabelActive: { color: '#FFF' },
+  dayLabelWeekend: { color: colors.primary },
+  dayLabelCycle: { color: colors.primary },
+  dayNum: { fontSize: 16, fontWeight: '700', color: colors.textHeader },
+  dayNumActive: { color: '#FFF' },
+  dayNumToday: { color: colors.primary },
+  dayNumCycle: { color: colors.primary },
+  deleteHeaderButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   dateNum: { color: colors.textHeader, fontSize: 16, fontWeight: '600' },
   legendRow: { fontSize: 12, marginBottom: 12 },
   legendFree: { color: '#10B981' },

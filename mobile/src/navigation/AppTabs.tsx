@@ -57,7 +57,7 @@ export function AppTabs() {
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'apps';
-          if (route.name === 'Dashboard') iconName = 'apps';
+          if (route.name === 'Salas') iconName = 'apps';
           else if (route.name === 'Agenda') iconName = 'calendar-clear';
           else if (route.name === 'Pacientes') iconName = 'people';
           else if (route.name === 'Gestão') iconName = 'bar-chart';
@@ -69,7 +69,7 @@ export function AppTabs() {
         tabBarStyle: { height: 60 + insets.bottom, paddingBottom: insets.bottom || 8, paddingTop: 8 }
       })}
     >
-      <Tab.Screen name="Dashboard" component={SalasNavigator} />
+      <Tab.Screen name="Salas" component={SalasNavigator} />
       <Tab.Screen name="Agenda" component={AgendaNavigator} />
       <Tab.Screen name="Pacientes" component={PacientesNavigator} />
       {isGestorOrRoot && (

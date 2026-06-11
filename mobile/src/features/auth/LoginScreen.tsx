@@ -27,11 +27,15 @@ export function LoginScreen() {
   });
 
   const handleLogin = async (data: LoginFormData) => {
+    console.log('[LOGIN] Tentando entrar com email:', data.email);
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email: data.email, password: data.password });
+      console.log('[LOGIN] Login bem-sucedido na API.');
       await login(response.data.token, response.data.user);
+      console.log('[LOGIN] Login finalizado no useAuthStore.');
     } catch (err: any) {
+      console.error('[LOGIN] Erro capturado no handleLogin:', err);
       const errorData = err?.response?.data;
       // Conta PENDENTE — exibir mensagem específica ao invés de "credenciais inválidas"
       if (errorData?.statusConta === 'PENDENTE') {
@@ -104,10 +108,13 @@ export function LoginScreen() {
 
           <Text style={styles.forgotPassword}>Esqueci minha senha</Text>
 
-          <Button 
+           <Button 
             title="ENTRAR" 
             style={styles.signInButton} 
-            onPress={handleSubmit(handleLogin)} 
+            onPress={handleSubmit(
+              handleLogin,
+              (errors) => console.log('[LOGIN] Erro de validação dos campos:', errors)
+            )} 
             loading={loading}
           />
           

@@ -97,7 +97,9 @@ export const getDisponibilidadeSala = async (req: Request, res: Response) => {
           ocupado: true,
           estagiario: sessao.agendamento.estagiario.usuario.nome,
           pacientes: sessao.agendamento.pacientes.map(p => p.paciente.nome),
-          status: sessao.status
+          status: sessao.status,
+          agendamentoId: sessao.agendamentoId,
+          sessaoId: sessao.id
         };
       }
       return { horario: slot, ocupado: false };
@@ -107,5 +109,26 @@ export const getDisponibilidadeSala = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar disponibilidade' });
+  }
+};
+
+export const deleteSala = async (req: Request, res: Response) => {
+  try {
+    const userPerfil = (req as any).user.perfil;
+    if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
+      return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores podem excluir salas.' });
+    }
+    const { salaId } = req.params;
+
+    // Soft delete: set ativa = false
+    await prisma.sala.update({
+      where: { id: parseInt(salaId as string) },
+      data: { ativa: false }
+    });
+
+    res.json({ message: 'Sala excluída com sucesso.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao excluir sala.' });
   }
 };
