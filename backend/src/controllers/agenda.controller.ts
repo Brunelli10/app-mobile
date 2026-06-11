@@ -49,6 +49,9 @@ export const getMinhaAgenda = async (req: Request, res: Response) => {
             estagiario: { include: { usuario: { select: { nome: true } } } },
             pacientes: { include: { paciente: true } }
           }
+        },
+        estagiarioSubstituto: {
+          include: { usuario: { select: { nome: true } } }
         }
       },
       orderBy: { dataSessao: 'asc' }
@@ -63,7 +66,8 @@ export const getMinhaAgenda = async (req: Request, res: Response) => {
         nome: p.paciente.nome,
         cpf: p.paciente.cpf,
         dataNascimento: p.paciente.dataNascimento,
-        responsavelNome: p.paciente.responsavelNome
+        responsavelNome: p.paciente.responsavelNome,
+        tipoAtendimento: p.paciente.tipoAtendimento
       }));
 
       return {
@@ -74,7 +78,10 @@ export const getMinhaAgenda = async (req: Request, res: Response) => {
         tipo: s.agendamento.tipo,
         status: s.status,
         notas: s.notas,
+        supervisorNota: s.supervisorNota,
         estagiarioNome: s.agendamento.estagiario?.usuario?.nome || '',
+        estagiarioSubstitutoNome: s.estagiarioSubstituto?.usuario?.nome || null,
+        estagiarioSubstitutoId: s.estagiarioSubstitutoId || null,
         diaExtenso: days[dateObj.getDay()],
         dia: String(dateObj.getDate()).padStart(2, '0'),
         dataRaw: dateObj.toISOString().split('T')[0],

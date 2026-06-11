@@ -49,6 +49,7 @@ const STATUS_CONFIG: Record<string, { color: string; label: string; bg: string }
 export function AgendaScreen() {
   const { user } = useAuthStore();
   const [calendarMode, setCalendarMode] = useState<'week' | 'month'>('week');
+  const [filtroStatus, setFiltroStatus] = useState<'TODOS' | 'AGENDADA' | 'CONCLUIDA' | 'FALTA'>('TODOS');
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Semana atual: referência pelo início (segunda-feira)
@@ -90,7 +91,18 @@ export function AgendaScreen() {
     markedDates[selectedDate] = { selected: true, selectedColor: colors.primary };
   }
 
-  const filteredAgenda = agenda?.filter((ag: any) => ag.dataRaw === selectedDate) || [];
+  const filteredAgenda = agenda?.filter((ag: any) => {
+    const matchesDate = ag.dataRaw === selectedDate;
+    let matchesStatus = true;
+    if (filtroStatus === 'AGENDADA') {
+      matchesStatus = ag.status === 'REALIZADA';
+    } else if (filtroStatus === 'CONCLUIDA') {
+      matchesStatus = ag.status === 'CONCLUIDA';
+    } else if (filtroStatus === 'FALTA') {
+      matchesStatus = ag.status === 'FALTA' || ag.status === 'CANCELADA';
+    }
+    return matchesDate && matchesStatus;
+  }) || [];
 
   // Determinar o título da tela por perfil
   const tituloPorPerfil: Record<string, string> = {
@@ -189,6 +201,21 @@ export function AgendaScreen() {
         </View>
       )}
 
+      {/* Filtros por Status */}
+      <View style={styles.statusFilterContainer}>
+        {(['TODOS', 'AGENDADA', 'CONCLUIDA', 'FALTA'] as const).map(status => (
+          <TouchableOpacity
+            key={status}
+            style={[styles.statusFilterBtn, filtroStatus === status && styles.statusFilterBtnActive]}
+            onPress={() => setFiltroStatus(status)}
+          >
+            <Text style={[styles.statusFilterText, filtroStatus === status && styles.statusFilterTextActive]}>
+              {status === 'TODOS' ? 'Todas' : status === 'AGENDADA' ? 'Agendadas' : status === 'CONCLUIDA' ? 'Concluídas' : 'Faltas'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* ─── Lista de Sessões ──────────────────────────── */}
       <View style={styles.listContainer}>
         {isLoading ? (
@@ -235,15 +262,35 @@ export function AgendaScreen() {
                       </View>
                     </View>
 
-                    {/* Paciente(s) — visível para estagiário e gestor */}
+                    {/* Paciente(s) — com Badge do Tipo de Atendimento */}
                     {showPaciente && (
-                      <Text style={styles.pacienteNome} numberOfLines={1}>{pacientesNomes}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginVertical: 2 }}>
+                        <Text style={styles.pacienteNome} numberOfLines={1}>{pacientesNomes}</Text>
+                        {item.pacientes?.[0]?.tipoAtendimento && (
+                          <View style={[styles.tagBadge, {
+                            backgroundColor: item.pacientes[0].tipoAtendimento === 'CRIANCA' ? '#FFF7ED' : (item.pacientes[0].tipoAtendimento === 'CASAL' ? '#FDF2F8' : '#EFF6FF')
+                          }]}>
+                            <Text style={[styles.tagBadgeText, {
+                              color: item.pacientes[0].tipoAtendimento === 'CRIANCA' ? '#EA580C' : (item.pacientes[0].tipoAtendimento === 'CASAL' ? '#DB2777' : colors.primary)
+                            }]}>
+                              {item.pacientes[0].tipoAtendimento === 'CRIANCA' ? 'Criança' : (item.pacientes[0].tipoAtendimento === 'CASAL' ? 'Casal' : 'Adulto')}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     )}
 
-                    {/* Estagiário — visível para gestor e paciente */}
+                    {/* Estagiário Titular */}
                     {(user?.perfil === 'GESTOR' || user?.perfil === 'ROOT' || user?.perfil === 'PACIENTE') && item.estagiarioNome && (
                       <Text style={styles.estagiarioText}>
                         <Ionicons name="person-circle-outline" size={12} color={colors.textSecondary} /> {item.estagiarioNome}
+                      </Text>
+                    )}
+
+                    {/* Estagiário Substituto (se houver) */}
+                    {item.estagiarioSubstitutoNome && (
+                      <Text style={styles.substitutoText}>
+                        <Ionicons name="swap-horizontal-outline" size={12} color="#D97706" /> Atendido por: {item.estagiarioSubstitutoNome} (Substituto)
                       </Text>
                     )}
 
@@ -301,6 +348,13 @@ const styles = StyleSheet.create({
   // ─── Calendário Mensal ──────────────────────────────────
   calendarWrapper: { backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#EAEEF3' },
 
+  // ─── Filtro Status ──────────────────────────────────────
+  statusFilterContainer: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 14, gap: 6 },
+  statusFilterBtn: { flex: 1, backgroundColor: '#FFF', paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#EAEEF3', elevation: 1 },
+  statusFilterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  statusFilterText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
+  statusFilterTextActive: { color: '#FFF' },
+
   // ─── Lista ──────────────────────────────────────────────
   listContainer: { flex: 1 },
   listContent: { padding: 16, paddingBottom: 100 },
@@ -316,7 +370,10 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   statusText: { fontSize: 11, fontWeight: '700' },
   pacienteNome: { fontSize: 16, fontWeight: '700', color: colors.textHeader },
+  tagBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, marginLeft: 6 },
+  tagBadgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
   estagiarioText: { fontSize: 12, color: colors.textSecondary },
+  substitutoText: { fontSize: 11, color: '#D97706', fontWeight: '600', marginTop: 1 },
   cardBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   salaText: { fontSize: 12, color: colors.textSecondary, fontWeight: '500', flex: 1 },
   tipoBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },

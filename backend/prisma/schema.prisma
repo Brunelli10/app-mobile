@@ -127,6 +127,7 @@ model Sessao {
   registradoPorId          Int
   registradoPor            Usuario      @relation("RegistradoPor", fields: [registradoPorId], references: [id])
   notas                    String?
+  supervisorNota           String?      // Anotações / Feedback da supervisão
 
   @@unique([salaId, dataSessao, horarioInicio])
 }
