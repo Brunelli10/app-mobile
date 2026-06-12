@@ -86,8 +86,26 @@ export const getDisponibilidadeSala = async (req: Request, res: Response) => {
       }
     });
 
-    // Todos os slots possíveis da clínica
-    const ALL_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+    const config = await prisma.configuracao.findFirst();
+    let ALL_SLOTS = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+
+    if (config) {
+      const allowedDays: number[] = JSON.parse(config.diasFuncionamento);
+      const dayOfWeek = dataInicio.getDay();
+
+      if (!allowedDays.includes(dayOfWeek)) {
+        return res.json([]);
+      }
+
+      const start = config.horarioInicio;
+      const end = config.horarioFim;
+
+      ALL_SLOTS = ALL_SLOTS.filter(slot => {
+        const hour = parseInt(slot.split(':')[0]);
+        const endHourStr = `${hour + 1}`.padStart(2, '0') + ':00';
+        return slot >= start && endHourStr <= end;
+      });
+    }
 
     const disponibilidade = ALL_SLOTS.map(slot => {
       const sessao = sessoesOcupadas.find(s => s.horarioInicio === slot);

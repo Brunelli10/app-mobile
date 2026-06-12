@@ -255,12 +255,25 @@ export function SalaDetailsScreen() {
     queryFn: async () => (await api.get('/pacientes')).data
   });
 
+  // ─── Dados: Configurações da clínica ──────────────────────────────
+  const { data: config } = useQuery({
+    queryKey: ['configuracao-clinica'],
+    queryFn: async () => (await api.get('/configuracao')).data
+  });
+
   // ─── Dados: Disponibilidade de slots por data ─────────────────────
   const { data: disponibilidade, isLoading: loadingSlots } = useQuery({
     queryKey: ['disponibilidade', salaId, selectedDate],
     queryFn: async () => (await api.get(`/salas/${salaId}/disponibilidade?data=${selectedDate}`)).data,
     enabled: !!salaId && !!selectedDate
   });
+
+  const isDayOpen = (dateStr: string) => {
+    if (!config) return true;
+    const allowedDays: number[] = JSON.parse(config.diasFuncionamento || '[]');
+    const dayOfWeek = new Date(dateStr + 'T12:00:00').getDay();
+    return allowedDays.includes(dayOfWeek);
+  };
 
   // Calcular datas do ciclo para o resumo visual
   const cycleDates = selectedDate && weeksCount > 1 ? getCycleDates(selectedDate, weeksCount) : [];
@@ -383,7 +396,13 @@ export function SalaDetailsScreen() {
             <Calendar
               current={selectedDate}
               minDate={todayStr}
-              onDayPress={(day: any) => setSelectedDate(day.dateString)}
+              onDayPress={(day: any) => {
+                if (isDayOpen(day.dateString)) {
+                  setSelectedDate(day.dateString);
+                } else {
+                  Alert.alert('Clínica Fechada', 'A clínica não funciona no dia selecionado.');
+                }
+              }}
               markedDates={{
                 ...cycleDates.reduce((acc, d, i) => ({
                   ...acc,
@@ -413,6 +432,7 @@ export function SalaDetailsScreen() {
                 const isActive = d.fullString === selectedDate;
                 const isToday = d.fullString === todayStr;
                 const isCycle = cycleDates.includes(d.fullString) && !isActive;
+                const isOpen = isDayOpen(d.fullString);
                 return (
                   <TouchableOpacity
                     key={i}
@@ -420,9 +440,16 @@ export function SalaDetailsScreen() {
                       styles.dayCol,
                       isActive && styles.dayColActive,
                       isCycle && styles.dayColCycle,
-                      d.isWeekend && !isActive && !isCycle && styles.dayColWeekend
+                      d.isWeekend && !isActive && !isCycle && styles.dayColWeekend,
+                      !isOpen && { opacity: 0.25 }
                     ]}
-                    onPress={() => setSelectedDate(d.fullString)}
+                    onPress={() => {
+                      if (isOpen) {
+                        setSelectedDate(d.fullString);
+                      } else {
+                        Alert.alert('Clínica Fechada', 'A clínica não funciona no dia selecionado.');
+                      }
+                    }}
                     activeOpacity={0.7}
                   >
                     <Text style={[

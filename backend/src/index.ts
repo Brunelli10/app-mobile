@@ -7,6 +7,9 @@ import agendaRoutes from './routes/agenda.routes';
 import sessoesRoutes from './routes/sessoes.routes';
 import pacientesRoutes from './routes/pacientes.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import configuracaoRoutes from './routes/configuracao.routes';
+import usuariosRoutes from './routes/usuarios.routes';
+import relatoriosRoutes from './routes/relatorios.routes';
 import { globalErrorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -20,6 +23,9 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/configuracao', configuracaoRoutes);
+app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/salas', salasRoutes);
 app.use('/api/agendamentos', agendamentosRoutes);
 app.use('/api/meus-agendamentos', agendaRoutes);

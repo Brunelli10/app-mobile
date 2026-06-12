@@ -81,7 +81,7 @@ export function AjustesScreen() {
 
         {/* ─── Cabeçalho ─────────────────────────────── */}
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>Perfil</Text>
+          <Text style={styles.pageTitle}>Configurações</Text>
         </View>
 
         {/* ─── Hero do Perfil ─────────────────────────── */}
@@ -168,9 +168,9 @@ export function AjustesScreen() {
           {/* Menus do Gestor/Root */}
           {isGestorOrRoot && (
             <>
-              <MenuRow icon="business-outline" label="Configurações da Clínica" sublabel="Horários de funcionamento e regras" onPress={() => Alert.alert('Em desenvolvimento', 'As configurações globais da clínica estarão disponíveis aqui.')} />
-              <MenuRow icon="shield-checkmark-outline" label="Gestão de Acessos" sublabel="Aprovar e gerenciar usuários" onPress={() => Alert.alert('Atenção Gestor', 'A aprovação de usuários atualmente é feita direto no topo do Dashboard!')} />
-              <MenuRow icon="download-outline" label="Exportar Relatórios" sublabel="Dados gerenciais em PDF/Excel" onPress={() => Alert.alert('Em desenvolvimento', 'A exportação de planilhas será lançada em breve.')} />
+              <MenuRow icon="business-outline" label="Configurações da Clínica" sublabel="Horários de funcionamento e regras" onPress={() => navigation.navigate('ConfiguracoesClinica')} />
+              <MenuRow icon="shield-checkmark-outline" label="Gestão de Acessos" sublabel="Aprovar e gerenciar usuários" onPress={() => navigation.navigate('GestaoAcessos')} />
+              <MenuRow icon="download-outline" label="Exportar Relatórios" sublabel="Dados gerenciais em PDF/Excel" onPress={() => navigation.navigate('Relatorios')} />
             </>
           )}
         </View>

@@ -9,6 +9,9 @@ import { SessaoDetailsScreen } from '../features/sessoes/SessaoDetailsScreen';
 import { PacientesScreen } from '../features/pacientes/PacientesScreen';
 import { PacientePerfilScreen } from '../features/pacientes/PacientePerfilScreen';
 import { AjustesScreen } from '../features/ajustes/AjustesScreen';
+import { ConfiguracoesClinicaScreen } from '../features/ajustes/ConfiguracoesClinicaScreen';
+import { GestaoAcessosScreen } from '../features/ajustes/GestaoAcessosScreen';
+import { RelatoriosScreen } from '../features/ajustes/RelatoriosScreen';
 import { DashboardGestorScreen } from '../features/gestor/DashboardGestorScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../config/theme';
@@ -18,6 +21,7 @@ const Tab = createBottomTabNavigator();
 const SalasStack = createNativeStackNavigator();
 const AgendaStackNav = createNativeStackNavigator();
 const PacientesStack = createNativeStackNavigator();
+const ConfiguracoesStack = createNativeStackNavigator();
 
 function SalasNavigator() {
   return (
@@ -46,6 +50,17 @@ function PacientesNavigator() {
   );
 }
 
+function ConfiguracoesNavigator() {
+  return (
+    <ConfiguracoesStack.Navigator screenOptions={{ headerShown: false }}>
+      <ConfiguracoesStack.Screen name="ConfiguracoesMain" component={AjustesScreen} />
+      <ConfiguracoesStack.Screen name="ConfiguracoesClinica" component={ConfiguracoesClinicaScreen} />
+      <ConfiguracoesStack.Screen name="GestaoAcessos" component={GestaoAcessosScreen} />
+      <ConfiguracoesStack.Screen name="Relatorios" component={RelatoriosScreen} />
+    </ConfiguracoesStack.Navigator>
+  );
+}
+
 export function AppTabs() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
@@ -61,12 +76,12 @@ export function AppTabs() {
           else if (route.name === 'Agenda') iconName = 'calendar-clear';
           else if (route.name === 'Pacientes') iconName = 'people';
           else if (route.name === 'Gestão') iconName = 'bar-chart';
-          else if (route.name === 'Ajustes') iconName = 'settings';
+          else if (route.name === 'Configurações') iconName = 'settings';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: { height: 60 + insets.bottom, paddingBottom: insets.bottom || 8, paddingTop: 8 }
+        tabBarStyle: { height: 60 + insets.bottom, paddingBottom: insets.bottom || 4, paddingTop: 4 }
       })}
     >
       <Tab.Screen name="Salas" component={SalasNavigator} />
@@ -75,7 +90,7 @@ export function AppTabs() {
       {isGestorOrRoot && (
         <Tab.Screen name="Gestão" component={DashboardGestorScreen} />
       )}
-      <Tab.Screen name="Ajustes" component={AjustesScreen} />
+      <Tab.Screen name="Configurações" component={ConfiguracoesNavigator} />
     </Tab.Navigator>
   );
 }

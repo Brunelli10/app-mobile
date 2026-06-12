@@ -51,8 +51,11 @@ Nós implementamos o **Concurrently** para facilitar a sua vida (Developer Exper
 - [Expo CLI / Expo Go](https://expo.dev/) no seu celular
 - Celular e Computador **na mesma rede Wi-Fi**.
 
-### 2. Configurando o IP
-Para que o celular ache o backend, abra `mobile/src/api/apiClient.ts` e certifique-se de que o `baseURL` está apontando para o seu **IP Local** atual (ex: `http://192.168.x.x:3000/api`).
+### 2. Configuração do IP (Automática)
+Não é necessário configurar IPs manualmente. O aplicativo possui **detecção dinâmica em tempo de execução** para desenvolvimento:
+* **Web (Navegador)**: Detecta o host atual e conecta à porta 3000.
+* **Celular (Expo Go)**: Detecta o IP do seu computador que enviou o bundle e conecta automaticamente.
+*(Nota: Para produção, a URL do backend deve ser fornecida na variável de ambiente `EXPO_PUBLIC_API_URL` durante a geração da build).*
 
 ### 3. Rodando tudo com 1 clique
 Abra o terminal **na raiz do projeto** e rode:

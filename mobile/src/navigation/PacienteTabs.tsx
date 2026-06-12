@@ -33,7 +33,7 @@ export function PacienteTabs() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: { height: 60 + insets.bottom, paddingBottom: insets.bottom || 8, paddingTop: 8 }
+        tabBarStyle: { height: 60 + insets.bottom, paddingBottom: insets.bottom || 4, paddingTop: 4 }
       })}
     >
       <Tab.Screen name="Minhas Sessões" component={SessoesPacienteNavigator} />

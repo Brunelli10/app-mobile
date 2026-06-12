@@ -131,3 +131,10 @@ model Sessao {
 
   @@unique([salaId, dataSessao, horarioInicio])
 }
+
+model Configuracao {
+  id                Int      @id @default(1)
+  horarioInicio     String   @default("08:00")
+  horarioFim        String   @default("22:00")
+  diasFuncionamento String   @default("[0,1,2,3,4,5,6]")
+}

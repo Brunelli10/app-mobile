@@ -26,6 +26,27 @@ export const createAgendamento = async (req: Request, res: Response) => {
     const numSemanas = parseInt(weeksCount) || 1;
     const idsSala = parseInt(salaId);
     const idPaciente = parseInt(pacienteId);
+
+    // ─── Validação contra as Configurações da Clínica ─────────────────────────
+    const config = await prisma.configuracao.findFirst();
+    if (config) {
+      const allowedDays: number[] = JSON.parse(config.diasFuncionamento);
+      const start = config.horarioInicio;
+      const end = config.horarioFim;
+
+      const dayOfWeek = dataSessaoInicial.getDay();
+      if (!allowedDays.includes(dayOfWeek)) {
+        const diasNomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        return res.status(400).json({ error: `A clínica não funciona aos ${diasNomes[dayOfWeek]}s.` });
+      }
+
+      const startHour = parseInt(horarioInicio.split(':')[0]);
+      const endHourStr = `${startHour + 1}`.padStart(2, '0') + ':00';
+
+      if (horarioInicio < start || endHourStr > end) {
+        return res.status(400).json({ error: `Horário fora do funcionamento da clínica (${start} às ${end}).` });
+      }
+    }
     
     const conflicts: { date: string; reason: string }[] = [];
     const availableWeeks: Date[] = [];
