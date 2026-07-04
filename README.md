@@ -4,68 +4,61 @@
 ![NodeJS](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Expo](https://img.shields.io/badge/Expo-1B1F23?style=for-the-badge&logo=expo&logoColor=white)
 
-Um aplicativo de software de ponta desenvolvido para **digitalizar a gestão de agendas e atendimentos em uma Clínica Escola de Psicologia**, substituindo o controle manual via planilhas.
+Um aplicativo de software de ponta desenvolvido para **digitalizar a gestão de agendas e atendimentos em uma Clínica Escola de Psicologia**, substituindo o controle manual via planilhas. A infraestrutura de dados roda num ambiente moderno de banco relacional utilizando **Neon DB (PostgreSQL)** em Nuvem.
 
 ## 🚀 Sobre o Projeto
-Este sistema resolve o problema da superlotação e choques de horário nas salas de atendimento. A aplicação impõe **regras de negócio estritas** (como o ciclo de limite de 10 semanas de terapia) e garante controle de acesso baseado em papéis (RBAC).
-
-A arquitetura do projeto foi dividida em um monorepo que contempla tanto o Backend (API REST) quanto o Frontend (App Mobile).
+Este sistema resolve o problema da superlotação e choques de horário nas salas de atendimento. A aplicação impõe **regras de negócio estritas** (como o ciclo de limite de 10 semanas de terapia, conferência de estagiários, e bloqueios contra concorrência temporal em agendamentos).
 
 ### 🌟 Principais Features
-- 🗓️ **Agendamento Inteligente:** Alocação de salas baseada em disponibilidade real, evitando conflitos de horários.
+- 🗓️ **Agendamento Inteligente e Avançado:** Alocação de salas baseada em disponibilidade real, evitando conflitos de horários. Gestores possuem privilégios de alocar sessões diretamente para qualquer estagiário.
 - 👨‍💻 **Role-Based Access Control (RBAC):**
-  - **ROOT / Gestor:** Visão gerencial total, dashboards gráficos, relatórios e controle de aprovação de usuários.
-  - **Estagiário:** Gerenciamento da própria grade, visualização apenas dos seus pacientes e anotações clínicas.
+  - **ROOT / Gestor:** Visão gerencial total, dashboards gráficos, extração de relatórios (PDF/CSV) e aprovação de cadastros.
+  - **Estagiário:** Gerenciamento da própria grade, visualização da sua fila de pacientes e anotações clínicas.
   - **Paciente:** Acesso restrito apenas ao seu próprio histórico e sessões marcadas.
-- 📱 **UI Premium e Fluida:** Design construído com componentes nativos via Expo, focado na melhor experiência do usuário (UX) em telas mobile.
+- 🔔 **Central de Notificações Push/In-App:** Sistema ativo de mensageria onde estagiários e gestores são notificados em tempo real sobre alterações nas salas, cancelamentos, novas sessoes, faltas e novas notas de supervisão.
+- 👤 **Gestão de Perfil:** Atualização de dados pessoais e alteração de senhas diretamente via aplicativo, com sincronização imediata através de Zustand e React Query.
+- 📱 **UI Premium e Fluida:** Design construído com componentes nativos via Expo, focado na melhor experiência do usuário.
 - 📊 **Dashboards e Métricas:** Gráficos interativos para acompanhamento de presença, cancelamentos e evolução da clínica.
 
 ---
 
 ## 🏗️ Arquitetura e Estrutura de Pastas
-O projeto segue as melhores práticas da Engenharia de Software (MVC no backend, Feature-Sliced no frontend).
+O projeto segue o modelo de monorepo, separando a API REST (Backend) do Aplicativo Cliente (Mobile).
 
 ```
 ├── backend/                  # ⚙️ API REST (Node.js + Express)
 ├── mobile/                   # 📱 App Mobile (React Native + Expo)
 ├── docs/                     # 📖 Documentação, Diagramas e Requisitos
-└── infra/                    # 🏗️ Infraestrutura e Docker Config
+└── infra/                    # 🏗️ Infraestrutura e Scripts
 ```
-
-### 📁 Organização de Pastas
-- **`docs/`**: Contém todos os arquivos de planejamento, diagramas de banco de dados (Mermaid) e requisitos do MVP.
-- **`infra/`**: Contém o arquivo `docker-compose.yml`, que serve para rodar a API em um ambiente isolado (container), facilitando o deploy futuro.
-- **`backend/`**: Servidor da aplicação.
-- **`mobile/`**: Aplicativo cliente.
 
 ---
 
 ## 💻 Como Rodar o Projeto (Ambiente de Desenvolvimento)
 
-Nós implementamos o **Concurrently** para facilitar a sua vida (Developer Experience). Você não precisa subir duas coisas manualmente.
+Nós implementamos o **Concurrently** para facilitar a Developer Experience (DX). Você não precisa subir duas coisas manualmente.
 
 ### 1. Pré-requisitos
 - [Node.js](https://nodejs.org/) (versão 18+)
 - [Expo CLI / Expo Go](https://expo.dev/) no seu celular
+- Arquivo `.env` configurado dentro da pasta `backend/` com as chaves do banco (`DATABASE_URL`, contendo acesso ao banco Neon/PostgreSQL).
 - Celular e Computador **na mesma rede Wi-Fi**.
 
 ### 2. Configuração do IP (Automática)
-Não é necessário configurar IPs manualmente. O aplicativo possui **detecção dinâmica em tempo de execução** para desenvolvimento:
-* **Web (Navegador)**: Detecta o host atual e conecta à porta 3000.
-* **Celular (Expo Go)**: Detecta o IP do seu computador que enviou o bundle e conecta automaticamente.
-*(Nota: Para produção, a URL do backend deve ser fornecida na variável de ambiente `EXPO_PUBLIC_API_URL` durante a geração da build).*
+Não é necessário configurar IPs manualmente. O aplicativo possui script nativo de **detecção dinâmica em tempo de execução** para desenvolvimento local.
 
-### 3. Rodando tudo com 1 clique
+### 3. Rodando tudo
 Abra o terminal **na raiz do projeto** e rode:
 
 ```bash
-# 1. Instala as dependências de todo o monorepo (root, backend, frontend)
+# 1. Instala as dependências de todo o monorepo
 npm run install:all
 
-# 2. Roda a inicialização do Banco de Dados
-npm run db:push
+# 2. Roda as migrações do Banco de Dados Neon (PostgreSQL) e insere o ROOT
+cd backend && npx prisma db push && npm run db:seed && cd ..
 
 # 3. Sobe o Backend (Node) e o Frontend (Expo) simultaneamente!
 npm start
@@ -77,11 +70,4 @@ Você pode usar a conta administrativa (ROOT) injetada no banco por padrão:
 - **Senha:** `root123`
 
 ---
-
-## 🔒 Testes e Engenharia (Próximos Passos)
-O projeto passou por rigorosos testes end-to-end manuais durante as Sprints de MVP. 
-- **Docker:** O uso de Docker foi evitado no Frontend para preservar a facilidade de usar o *Expo Go* (via rede LAN). No futuro, um `docker-compose.yml` será fornecido para orquestração da API e do banco de dados (ex: PostgreSQL) em ambiente de produção (AWS/Render).
-- **CI/CD:** Pipelines serão configurados após a estabilização do modelo de negócio (Sprint Final).
-
----
-*Desenvolvido com 🩵 para a Gestão Clínica.*
+*Desenvolvido com 🩵 para a Gestão Clínica Moderna.*

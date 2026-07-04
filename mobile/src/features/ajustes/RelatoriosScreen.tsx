@@ -7,7 +7,7 @@ import { Button } from '../../components/Button';
 import { api } from '../../api/apiClient';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 
 const REPORT_TYPES = [
   { id: 'sessoes', title: 'Sessões e Atendimentos', desc: 'Sessões por período, sala e status', icon: 'calendar-outline' },
@@ -163,7 +163,7 @@ export function RelatoriosScreen() {
       htmlTitle = 'Relatório de Sessões e Atendimentos';
       
       const total = data.length;
-      const realizadas = data.filter((d: any) => d.status === 'CONCLUIDA' || d.status === 'REALIZADA').length;
+      const realizadas = data.filter((d: any) => d.status === 'CONCLUIDA').length;
       const faltas = data.filter((d: any) => d.status === 'FALTA').length;
       const canceladas = data.filter((d: any) => d.status === 'CANCELADA').length;
 
@@ -187,16 +187,19 @@ export function RelatoriosScreen() {
         </tr>
       `;
 
-      tableRowsHTML = data.map((item: any) => `
+      tableRowsHTML = data.map((item: any) => {
+        const dataStr = typeof item.data === 'string' ? item.data : new Date(item.data).toISOString().split('T')[0];
+        return `
         <tr>
-          <td>${item.data.split('-').reverse().join('/')}</td>
+          <td>${dataStr.split('-').reverse().join('/')}</td>
           <td>${item.horario}</td>
           <td>${item.sala}</td>
           <td>${item.estagiario}</td>
           <td>${item.pacientes}</td>
           <td><span class="status-badge status-${item.status.toLowerCase()}">${item.status}</span></td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
     } else if (selectedReport === 'estagiarios') {
       htmlTitle = 'Relatório de Frequência de Estagiários';
@@ -261,17 +264,20 @@ export function RelatoriosScreen() {
         </tr>
       `;
 
-      tableRowsHTML = data.map((item: any) => `
+      tableRowsHTML = data.map((item: any) => {
+        const nascStr = typeof item.dataNascimento === 'string' ? item.dataNascimento : new Date(item.dataNascimento).toISOString().split('T')[0];
+        return `
         <tr>
           <td><strong>${item.nome}</strong></td>
-          <td>${item.dataNascimento.split('-').reverse().join('/')}</td>
+          <td>${nascStr.split('-').reverse().join('/')}</td>
           <td>${item.cpf}</td>
           <td>${item.telefone}</td>
           <td>${item.tipoAtendimento}</td>
           <td><span class="status-badge status-${item.status === 'Ativo' ? 'realizada' : 'cancelada'}">${item.status}</span></td>
           <td style="font-size: 11px;">${item.responsavel}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     const htmlContent = `

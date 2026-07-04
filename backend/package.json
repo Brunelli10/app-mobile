@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.ts",
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "seed": "ts-node src/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node src/seed.ts"
   },
   "keywords": [],
   "author": "",

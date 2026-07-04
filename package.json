@@ -9,7 +9,9 @@
     "start:web": "cd mobile && npm run web",
     "install:all": "npm install && cd backend && npm install && cd ../mobile && npm install",
     "db:push": "cd backend && npx prisma db push",
-    "db:seed": "cd backend && npx prisma db seed"
+    "db:migrate": "cd backend && npx prisma migrate dev",
+    "db:seed": "cd backend && npx prisma db seed",
+    "db:setup": "npm run db:migrate && npm run db:seed"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

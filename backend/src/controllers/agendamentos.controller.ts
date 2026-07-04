@@ -1,23 +1,34 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { notificarGestores, notificarEstagiario, notificarPacientesDoAgendamento } from '../utils/notificacoes.helper';
 
 const prisma = new PrismaClient();
 
 export const createAgendamento = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { salaId, horarioInicio, weeksCount, pacienteId, dataInicio, skipConflicts } = req.body;
+    const userPerfil = (req as any).user.perfil;
+    const { salaId, horarioInicio, weeksCount, pacienteId, dataInicio, skipConflicts, estagiarioId } = req.body;
     
     if (!salaId || !horarioInicio || !weeksCount || !pacienteId || !dataInicio) {
        return res.status(400).json({ error: 'Dados incompletos para o agendamento.' });
     }
 
-    let estagiario = await prisma.estagiario.findUnique({
-      where: { usuarioId: userId }
-    });
+    let estagiarioToUse;
 
-    if (!estagiario) {
-       return res.status(403).json({ error: 'Perfil de Estagiário não encontrado.' });
+    if (userPerfil === 'GESTOR' || userPerfil === 'ROOT') {
+      if (!estagiarioId) {
+        return res.status(400).json({ error: 'Gestores devem selecionar um estagiário para o agendamento.' });
+      }
+      estagiarioToUse = await prisma.estagiario.findUnique({ where: { id: parseInt(estagiarioId) } });
+      if (!estagiarioToUse) return res.status(404).json({ error: 'Estagiário selecionado não encontrado.' });
+    } else {
+      estagiarioToUse = await prisma.estagiario.findUnique({
+        where: { usuarioId: userId }
+      });
+      if (!estagiarioToUse) {
+         return res.status(403).json({ error: 'Perfil de Estagiário não encontrado.' });
+      }
     }
 
     // Pega a data selecionada no Calendário pelo Frontend
@@ -83,14 +94,14 @@ export const createAgendamento = async (req: Request, res: Response) => {
                 horarioInicio: horarioInicio,
                 status: { not: 'CANCELADA' },
                 agendamento: {
-                   estagiarioId: estagiario.id
+                   estagiarioId: estagiarioToUse.id
                 }
              }
           });
 
           if (conflitoEstagiario) {
              hasConflict = true;
-             reason = `Você já possui um atendimento no dia ${dateStr} às ${horarioInicio}.`;
+             reason = `O estagiário selecionado já possui um atendimento no dia ${dateStr} às ${horarioInicio}.`;
           }
         }
 
@@ -142,7 +153,7 @@ export const createAgendamento = async (req: Request, res: Response) => {
     const agendamento = await prisma.agendamento.create({
       data: {
         salaId: idsSala,
-        estagiarioId: estagiario.id,
+        estagiarioId: estagiarioToUse.id,
         horarioInicio,
         horarioFim: `${parseInt(horarioInicio.split(':')[0]) + 1}:00`,
         tipo: numSemanas > 1 ? 'N_SEMANAS' : 'UNICO',
@@ -175,6 +186,24 @@ export const createAgendamento = async (req: Request, res: Response) => {
     await prisma.sessao.createMany({ data: sessoesData });
 
     res.status(201).json({ message: 'Agendamento salvo com sucesso!', agendamento });
+
+    // ─── Notificações ───────────────────────────────────────────────────────────
+    const sala = await prisma.sala.findUnique({ where: { id: idsSala }, select: { nome: true } });
+    const estagiarioUser = await prisma.usuario.findUnique({ where: { id: estagiarioToUse.usuarioId }, select: { nome: true } });
+    const dataFormatada = dataSessaoInicial.toLocaleDateString('pt-BR');
+    
+    // Notifica Gestores sobre a criação (se não foi ele mesmo que criou)
+    if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
+      const msgGestor = `${estagiarioUser?.nome || 'Estagiário'} criou ${numSemanas > 1 ? `${numSemanas} sessões` : 'uma sessão'} na ${sala?.nome || 'sala'} a partir de ${dataFormatada} às ${horarioInicio}.`;
+      notificarGestores('AGENDAMENTO', '📅 Novo Agendamento', msgGestor);
+    }
+    
+    // Notifica o Estagiário (se foi o gestor que criou pra ele)
+    if (userPerfil === 'GESTOR' || userPerfil === 'ROOT') {
+      notificarEstagiario(estagiarioToUse.id, 'AGENDAMENTO', '📅 Novo Agendamento (Gestão)', `A coordenação criou um agendamento para você na ${sala?.nome || 'sala'} a partir de ${dataFormatada} às ${horarioInicio}.`);
+    } else {
+      notificarEstagiario(estagiarioToUse.id, 'AGENDAMENTO', '📅 Agendamento confirmado', `Seu agendamento na ${sala?.nome || 'sala'} foi confirmado a partir de ${dataFormatada} às ${horarioInicio}.`);
+    }
   } catch (error: any) {
     console.error("ERRO DO MOTOR DE AGENDAMENTO", error);
     
@@ -219,6 +248,18 @@ export const deleteAgendamento = async (req: Request, res: Response) => {
     });
 
     res.json({ message: 'Agendamento cancelado com sucesso.' });
+
+    // ─── Notificações ───────────────────────────────────────────────────────────
+    const agFull = await prisma.agendamento.findUnique({
+      where: { id: agendamentoId },
+      include: { estagiario: true, sala: { select: { nome: true } } }
+    });
+    if (agFull) {
+      const dataRef = agFull.dataEspecifica ? agFull.dataEspecifica.toLocaleDateString('pt-BR') : '';
+      notificarGestores('CANCELAMENTO', '⚠️ Agendamento Cancelado', `Agendamento da ${agFull.sala.nome} em ${dataRef} foi cancelado.`);
+      notificarEstagiario(agFull.estagiarioId, 'CANCELAMENTO', '⚠️ Agendamento Cancelado', `Seu agendamento na ${agFull.sala.nome} (${dataRef} às ${agFull.horarioInicio}) foi cancelado pelo gestor.`);
+      notificarPacientesDoAgendamento(agendamentoId, 'CANCELAMENTO', '⚠️ Consulta Cancelada', `Sua consulta marcada para ${dataRef} às ${agFull.horarioInicio} foi cancelada.`);
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao cancelar agendamento.' });

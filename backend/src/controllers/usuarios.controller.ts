@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { criarNotificacao, notificarGestores } from '../utils/notificacoes.helper';
 
 const prisma = new PrismaClient();
 
@@ -64,6 +65,11 @@ export const updateUsuarioStatus = async (req: Request, res: Response) => {
       where: { id: parseInt(id as string) },
       data: { status }
     });
+    
+    if (status === 'ATIVO') {
+      criarNotificacao(usuario.id, 'APROVACAO', '🎉 Acesso Aprovado!', 'Seu cadastro foi aprovado pelo gestor. Bem-vindo(a) ao sistema!');
+      notificarGestores('SISTEMA', '👤 Usuário Aprovado', `A conta de ${usuario.nome} foi ativada com sucesso.`);
+    }
 
     res.json({ message: `Status de ${usuario.nome} atualizado para ${status}!`, usuario });
   } catch (error) {

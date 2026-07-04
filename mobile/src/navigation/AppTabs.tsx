@@ -12,8 +12,12 @@ import { AjustesScreen } from '../features/ajustes/AjustesScreen';
 import { ConfiguracoesClinicaScreen } from '../features/ajustes/ConfiguracoesClinicaScreen';
 import { GestaoAcessosScreen } from '../features/ajustes/GestaoAcessosScreen';
 import { RelatoriosScreen } from '../features/ajustes/RelatoriosScreen';
+import { PerfilScreen } from '../features/ajustes/PerfilScreen';
+import { NotificacoesScreen } from '../features/notificacoes/NotificacoesScreen';
 import { DashboardGestorScreen } from '../features/gestor/DashboardGestorScreen';
 import { useAuthStore } from '../store/useAuthStore';
+import { useNotificacoesStore } from '../store/useNotificacoesStore';
+import { useNotificacoesCount } from '../hooks/useNotificacoesCount';
 import { colors } from '../config/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -57,6 +61,8 @@ function ConfiguracoesNavigator() {
       <ConfiguracoesStack.Screen name="ConfiguracoesClinica" component={ConfiguracoesClinicaScreen} />
       <ConfiguracoesStack.Screen name="GestaoAcessos" component={GestaoAcessosScreen} />
       <ConfiguracoesStack.Screen name="Relatorios" component={RelatoriosScreen} />
+      <ConfiguracoesStack.Screen name="Perfil" component={PerfilScreen} />
+      <ConfiguracoesStack.Screen name="Notificacoes" component={NotificacoesScreen} />
     </ConfiguracoesStack.Navigator>
   );
 }
@@ -65,6 +71,10 @@ export function AppTabs() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const isGestorOrRoot = user?.perfil === 'GESTOR' || user?.perfil === 'ROOT';
+  const naoLidas = useNotificacoesStore(state => state.naoLidas);
+
+  // Hook global que fará o polling de notificações em background a cada 30s
+  useNotificacoesCount();
 
   return (
     <Tab.Navigator
@@ -79,6 +89,8 @@ export function AppTabs() {
           else if (route.name === 'Configurações') iconName = 'settings';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        tabBarBadge: route.name === 'Configurações' && naoLidas > 0 ? naoLidas : undefined,
+        tabBarBadgeStyle: { backgroundColor: '#EF4444', fontSize: 10 },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: { height: 60 + insets.bottom, paddingBottom: insets.bottom || 4, paddingTop: 4 }

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { notificarGestores, notificarEstagiario } from '../utils/notificacoes.helper';
 
 const prisma = new PrismaClient();
 
@@ -21,7 +22,8 @@ export const updateStatusSessao = async (req: Request, res: Response) => {
                // Puxa o histórico de todas sessões desse estagiário para esse ciclo
                sessoes: {
                   orderBy: { dataSessao: 'asc' }
-               }
+               },
+               estagiario: { include: { usuario: { select: { nome: true } } } }
             }
          }
       }
@@ -57,6 +59,10 @@ export const updateStatusSessao = async (req: Request, res: Response) => {
                }
            }
        }
+       
+       const estNome = sessaoAtualizada.agendamento?.estagiario?.usuario?.nome || 'Estagiário';
+       const dataF = sessaoAtualizada.dataSessao.toLocaleDateString('pt-BR');
+       notificarGestores('FALTA', '📋 Falta Registrada', `Falta registrada na sessão de ${estNome} do dia ${dataF}.`);
     }
 
     res.json({ message: 'Ação gravada com Sucesso e Auditoria Computada.', sessao: sessaoAtualizada });
@@ -112,8 +118,19 @@ export const updateSupervisorNotaSessao = async (req: Request, res: Response) =>
 
     const sessaoAtualizada = await prisma.sessao.update({
       where: { id: sessaoId },
-      data: { supervisorNota }
+      data: { supervisorNota },
+      include: { agendamento: true }
     });
+    
+    if (sessaoAtualizada.agendamento) {
+      notificarEstagiario(
+        sessaoAtualizada.agendamento.estagiarioId,
+        'NOTA_SUPERVISOR',
+        '📝 Feedback de Supervisão',
+        `Seu supervisor adicionou uma nota na sessão do dia ${sessaoAtualizada.dataSessao.toLocaleDateString('pt-BR')}.`
+      );
+    }
+    
     res.json({ message: 'Feedback de supervisão salvo com sucesso.', sessao: sessaoAtualizada });
   } catch (error) {
     console.error(error);

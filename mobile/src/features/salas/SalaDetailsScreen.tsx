@@ -65,6 +65,7 @@ export function SalaDetailsScreen() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [weeksCount, setWeeksCount] = useState(1);
   const [pacienteId, setPacienteId] = useState<number | null>(null);
+  const [estagiarioId, setEstagiarioId] = useState<number | null>(null);
   const [isBooking, setIsBooking] = useState(false);
 
   const weekDays = getWeekOf(weekRef);
@@ -161,6 +162,11 @@ export function SalaDetailsScreen() {
       else Alert.alert('Atenção', 'Selecione um paciente.');
       return;
     }
+    if (isGestorOrRoot && !estagiarioId) {
+      if (Platform.OS === 'web') alert('Selecione um estagiário responsável.');
+      else Alert.alert('Atenção', 'Selecione um estagiário responsável.');
+      return;
+    }
 
     const slotInfo = disponibilidade?.find((s: any) => s.horario === selectedTime);
     if (slotInfo?.ocupado) {
@@ -180,6 +186,7 @@ export function SalaDetailsScreen() {
           horarioInicio: selectedTime, 
           weeksCount, 
           pacienteId, 
+          estagiarioId: isGestorOrRoot ? estagiarioId : undefined,
           dataInicio: selectedDate,
           skipConflicts 
         });
@@ -253,6 +260,13 @@ export function SalaDetailsScreen() {
   const { data: pacientes, isLoading: loadingPacientes } = useQuery({
     queryKey: ['pacientes'],
     queryFn: async () => (await api.get('/pacientes')).data
+  });
+
+  // ─── Dados: Estagiários (Apenas Gestor/Root) ──────────────────────
+  const { data: estagiarios, isLoading: loadingEstagiarios } = useQuery({
+    queryKey: ['estagiarios'],
+    queryFn: async () => (await api.get('/sessoes/estagiarios')).data,
+    enabled: isGestorOrRoot
   });
 
   // ─── Dados: Configurações da clínica ──────────────────────────────
@@ -376,6 +390,39 @@ export function SalaDetailsScreen() {
               );
             })}
           </ScrollView>
+        )}
+
+        {/* ─── 1.5. Estagiário (Gestor/Root) ────────────────────── */}
+        {isGestorOrRoot && (
+          <>
+            <Text style={styles.sectionTitle}>1.5. Estagiário Responsável</Text>
+            {loadingEstagiarios ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pacientesScroll}>
+                {estagiarios?.map((e: any) => {
+                  const isActive = estagiarioId === e.id;
+                  return (
+                    <TouchableOpacity
+                      key={e.id}
+                      style={[styles.pacienteCard, isActive && styles.pacienteCardActive, { width: 130 }]}
+                      onPress={() => setEstagiarioId(e.id)}
+                    >
+                      <View style={styles.pacienteCardTop}>
+                        <View style={[styles.pacienteAvatar, isActive && styles.pacienteAvatarActive]}>
+                          <Text style={[styles.pacienteAvatarText, isActive && { color: colors.primary }]}>
+                            {e.nome.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.pacienteNome, isActive && styles.textWhite]} numberOfLines={1}>{e.nome}</Text>
+                      <Text style={[styles.pacienteSub, isActive && styles.textWhiteAlpha, { fontSize: 10 }]}>Mat: {e.matricula}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </>
         )}
 
         {/* ─── 2. Data ──────────────────────────────────────────── */}

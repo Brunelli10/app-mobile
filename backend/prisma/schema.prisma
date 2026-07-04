@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Usuario {
@@ -23,6 +23,7 @@ model Usuario {
   estagiario Estagiario?
   paciente   Paciente?
   sessoesRegistradas Sessao[] @relation("RegistradoPor")
+  notificacoes       Notificacao[]
 }
 
 model Supervisor {
@@ -137,4 +138,15 @@ model Configuracao {
   horarioInicio     String   @default("08:00")
   horarioFim        String   @default("22:00")
   diasFuncionamento String   @default("[0,1,2,3,4,5,6]")
+}
+
+model Notificacao {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  tipo      String   // AGENDAMENTO | CANCELAMENTO | APROVACAO | FALTA | NOTA_SUPERVISOR | LEMBRETE | SISTEMA
+  titulo    String
+  mensagem  String
+  lida      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

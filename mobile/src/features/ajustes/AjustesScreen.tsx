@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -69,10 +69,16 @@ export function AjustesScreen() {
   const sessoesSemana = meusAgendamentos?.length || 0;
 
   const handleLogout = () => {
-    Alert.alert('Sair da Conta', 'Tem certeza que deseja encerrar a sessão?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: async () => { await logout(); } }
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm('Tem certeza que deseja encerrar a sessão?')) {
+        logout();
+      }
+    } else {
+      Alert.alert('Sair da Conta', 'Tem certeza que deseja encerrar a sessão?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sair', style: 'destructive', onPress: async () => { await logout(); } }
+      ]);
+    }
   };
 
   return (
@@ -177,8 +183,8 @@ export function AjustesScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Conta e App</Text>
-          <MenuRow icon="person-outline" label="Informações Pessoais" sublabel="Editar meus dados" onPress={() => Alert.alert('Em desenvolvimento', 'A edição de perfil será lançada em breve.')} />
-          <MenuRow icon="notifications-outline" label="Notificações" sublabel="Alertas de sessão e pendências" onPress={() => Alert.alert('Em desenvolvimento', 'A central de notificações está sendo construída.')} />
+          <MenuRow icon="person-outline" label="Informações Pessoais" sublabel="Editar meus dados" onPress={() => navigation.navigate('Perfil')} />
+          <MenuRow icon="notifications-outline" label="Notificações" sublabel="Alertas de sessão e pendências" onPress={() => navigation.navigate('Notificacoes')} />
           <MenuRow icon="information-circle-outline" label="Sobre o App" sublabel="Versão 1.0.0 — Psicologia SEP" onPress={() => Alert.alert('Sobre', 'App desenvolvido para a Clínica Escola de Psicologia.\nVersão: 1.0.0')} />
         </View>
 

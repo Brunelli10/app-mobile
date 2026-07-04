@@ -46,9 +46,17 @@ export const getRelatorioSessoes = async (req: Request, res: Response) => {
       orderBy: { dataSessao: 'asc' }
     });
 
+    const formatLocalDate = (date: Date) => {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     const formatted = sessoes.map(s => ({
       id: s.id,
-      data: s.dataSessao.toISOString().split('T')[0],
+      data: formatLocalDate(s.dataSessao),
       horario: s.horarioInicio,
       sala: s.agendamento.sala.nome,
       estagiario: s.agendamento.estagiario.usuario.nome,

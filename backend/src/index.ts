@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes';
@@ -10,6 +11,8 @@ import dashboardRoutes from './routes/dashboard.routes';
 import configuracaoRoutes from './routes/configuracao.routes';
 import usuariosRoutes from './routes/usuarios.routes';
 import relatoriosRoutes from './routes/relatorios.routes';
+import notificacoesRoutes from './routes/notificacoes.routes';
+import meRoutes from './routes/me.routes';
 import { globalErrorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -32,6 +35,8 @@ app.use('/api/meus-agendamentos', agendaRoutes);
 app.use('/api/sessoes', sessoesRoutes);
 app.use('/api/pacientes', pacientesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/notificacoes', notificacoesRoutes);
+app.use('/api/me', meRoutes);
 
 // ─── Middleware Global de Erros (deve ser o último) ───────────────────────────
 app.use(globalErrorHandler);

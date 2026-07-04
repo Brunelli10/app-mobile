@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useNotificacoesStore } from '../../store/useNotificacoesStore';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 
 LocaleConfig.locales['pt-br'] = {
@@ -58,6 +59,7 @@ export function SalasScreen() {
   const queryClient = useQueryClient();
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const naoLidas = useNotificacoesStore(state => state.naoLidas);
 
   const [calendarMode, setCalendarMode] = useState<'week' | 'month'>('week');
   const [weekRef, setWeekRef] = useState(new Date());
@@ -174,7 +176,14 @@ export function SalasScreen() {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <Ionicons name="notifications-outline" size={22} color={colors.textHeader} style={{ marginRight: 14 }} />
+            <TouchableOpacity onPress={() => navigation.navigate('Configurações', { screen: 'Notificacoes' })} style={{ marginRight: 14 }}>
+              <Ionicons name="notifications-outline" size={22} color={colors.textHeader} />
+              {naoLidas > 0 && (
+                <View style={styles.badgeTopRight}>
+                  <Text style={styles.badgeTopRightText}>{naoLidas > 99 ? '99+' : naoLidas}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{user?.nome?.substring(0, 2).toUpperCase() || 'ES'}</Text>
             </View>
@@ -388,6 +397,8 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryDark, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
+  badgeTopRight: { position: 'absolute', top: -4, right: -6, backgroundColor: '#EF4444', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#F2F5F8' },
+  badgeTopRightText: { color: '#FFF', fontSize: 9, fontWeight: 'bold' },
   calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   sectionTitle: { fontSize: 18, color: colors.primaryDark, fontWeight: '700' },
   toggleBox: { flexDirection: 'row', backgroundColor: '#EAEEF3', borderRadius: 20, padding: 3 },
