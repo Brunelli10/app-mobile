@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getPacientes,
   createPaciente,
+  convitePaciente,
   updateResponsavel,
   getPacientesPendentes,
   aprovarPaciente,
@@ -17,6 +18,7 @@ import { criarPacienteSchema, updateResponsavelSchema } from '../middleware/vali
 const router = Router();
 
 router.get('/', authMiddleware, getPacientes as any);
+router.post('/convite', authMiddleware, convitePaciente as any);
 router.post('/', authMiddleware, validate(criarPacienteSchema), createPaciente as any);
 router.get('/pendentes', authMiddleware, getPacientesPendentes as any);
 router.get('/:id/perfil', authMiddleware, getPacientePerfil as any);

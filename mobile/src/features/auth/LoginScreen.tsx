@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from 'react-native';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { colors } from '../../config/theme';
@@ -21,12 +21,14 @@ export function LoginScreen() {
   const navigation = useNavigation<any>();
   const { login } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
   const handleLogin = async (data: LoginFormData) => {
+    setLoginError(null);
     console.log('[LOGIN] Tentando entrar com email:', data.email);
     setLoading(true);
     try {
@@ -39,16 +41,9 @@ export function LoginScreen() {
       const errorData = err?.response?.data;
       // Conta PENDENTE — exibir mensagem específica ao invés de "credenciais inválidas"
       if (errorData?.statusConta === 'PENDENTE') {
-        Alert.alert(
-          '⏳ Conta Pendente',
-          'Sua conta ainda está aguardando aprovação.\n\nUm estagiário ou gestor da clínica precisa aprovar seu cadastro antes de você acessar o sistema.',
-          [{ text: 'Entendido', style: 'default' }]
-        );
+        setLoginError('Sua conta ainda está aguardando aprovação de um Gestor para acessar o sistema.');
       } else {
-        Alert.alert(
-          'Acesso Negado',
-          errorData?.error || 'Revise seu e-mail e senha ou verifique se o servidor está rodando.'
-        );
+        setLoginError(errorData?.error || 'Revise seu e-mail e senha ou verifique se o servidor está rodando.');
       }
     } finally {
       setLoading(false);
@@ -73,6 +68,12 @@ export function LoginScreen() {
         </View>
 
         <View style={styles.formContainer}>
+          {loginError && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorBoxText}>{loginError}</Text>
+            </View>
+          )}
+
           <Controller
             control={control}
             name="email"
@@ -106,7 +107,9 @@ export function LoginScreen() {
             )}
           />
 
-          <Text style={styles.forgotPassword}>Esqueci minha senha</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+            <Text style={styles.forgotPassword}>Esqueci minha senha</Text>
+          </TouchableOpacity>
 
            <Button 
             title="ENTRAR" 
@@ -119,12 +122,12 @@ export function LoginScreen() {
           />
           
           <Text style={styles.signupText}>
-            Ainda não tem uma conta?{' '}
+            É profissional ou estagiário da clínica?{' '}
             <Text 
               style={styles.signupLink} 
               onPress={() => navigation.navigate('Register')}
             >
-              Criar Conta
+              Solicite seu acesso
             </Text>
           </Text>
         </View>
@@ -181,6 +184,21 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  errorBoxText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   forgotPassword: {
     color: '#64B5F6', 

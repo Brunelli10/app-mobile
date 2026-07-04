@@ -6,6 +6,7 @@ import { colors } from '../../config/theme';
 import { Button } from '../../components/Button';
 import { api } from '../../api/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Picker } from '@react-native-picker/picker';
 
 const HOURS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -150,36 +151,30 @@ export function ConfiguracoesClinicaScreen() {
           <Text style={styles.cardSub}>Selecione a faixa horária permitida para agendamentos na clínica:</Text>
 
           <Text style={styles.fieldLabel}>Horário de Abertura</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hoursScroll}>
-            {HOURS.slice(0, -1).map(hour => {
-              const selected = horarioInicio === hour;
-              return (
-                <TouchableOpacity
-                  key={hour}
-                  style={[styles.hourItem, selected && styles.hourItemActive]}
-                  onPress={() => setHorarioInicio(hour)}
-                >
-                  <Text style={[styles.hourText, selected && styles.hourTextActive]}>{hour}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={horarioInicio}
+              onValueChange={(itemValue) => setHorarioInicio(itemValue)}
+              style={styles.picker}
+            >
+              {HOURS.slice(0, -1).map(hour => (
+                <Picker.Item key={hour} label={hour} value={hour} />
+              ))}
+            </Picker>
+          </View>
 
           <Text style={styles.fieldLabel}>Horário de Fechamento</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hoursScroll}>
-            {HOURS.slice(1).map(hour => {
-              const selected = horarioFim === hour;
-              return (
-                <TouchableOpacity
-                  key={hour}
-                  style={[styles.hourItem, selected && styles.hourItemActive]}
-                  onPress={() => setHorarioFim(hour)}
-                >
-                  <Text style={[styles.hourText, selected && styles.hourTextActive]}>{hour}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={horarioFim}
+              onValueChange={(itemValue) => setHorarioFim(itemValue)}
+              style={styles.picker}
+            >
+              {HOURS.slice(1).map(hour => (
+                <Picker.Item key={hour} label={hour} value={hour} />
+              ))}
+            </Picker>
+          </View>
         </View>
 
         <View style={styles.warningCard}>
@@ -218,11 +213,19 @@ const styles = StyleSheet.create({
   dayTextActive: { color: '#FFF' },
   daySubName: { fontSize: 8, color: colors.textSecondary, marginTop: 4, textTransform: 'uppercase', fontWeight: '700' },
   fieldLabel: { fontSize: 14, fontWeight: '600', color: colors.textHeader, marginTop: 14, marginBottom: 8 },
-  hoursScroll: { marginBottom: 10 },
-  hourItem: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', marginRight: 8 },
-  hourItemActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  hourText: { fontSize: 14, fontWeight: '700', color: colors.textHeader },
-  hourTextActive: { color: '#FFF' },
+  pickerContainer: { 
+    backgroundColor: '#F8FAFC', 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0', 
+    borderRadius: 12, 
+    overflow: 'hidden',
+    marginBottom: 10
+  },
+  picker: { 
+    height: 50, 
+    width: '100%',
+    color: colors.textHeader
+  },
   warningCard: { flexDirection: 'row', backgroundColor: '#FEF3C7', borderLeftWidth: 4, borderColor: '#D97706', borderRadius: 12, padding: 16, marginBottom: 20 },
   warningText: { flex: 1, fontSize: 12, color: '#92400E', fontWeight: '600', lineHeight: 18 },
   footer: { backgroundColor: '#FFF', padding: 20, paddingBottom: 34, borderTopLeftRadius: 24, borderTopRightRadius: 24, elevation: 12 }

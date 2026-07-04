@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
+import { MaskedTextInput } from 'react-native-masked-text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -118,14 +119,14 @@ export function PacientePerfilScreen() {
       return Alert.alert('Telefone Inválido', 'O telefone deve conter 10 ou 11 dígitos numéricos (com DDD).');
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataNascimento)) {
-      return Alert.alert('Data de Nascimento Inválida', 'A data deve estar no formato AAAA-MM-DD (ex: 1990-06-15).');
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dataNascimento)) {
+      return Alert.alert('Data de Nascimento Inválida', 'A data deve estar no formato DD/MM/YYYY (ex: 15/06/1990).');
     }
 
-    const parts = dataNascimento.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
+    const [dayStr, monthStr, yearStr] = dataNascimento.split('/');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10) - 1;
+    const day = parseInt(dayStr, 10);
     const dateObj = new Date(year, month, day);
     if (
       dateObj.getFullYear() !== year ||
@@ -136,7 +137,8 @@ export function PacientePerfilScreen() {
       return Alert.alert('Data de Nascimento Inválida', 'Insira uma data de nascimento real e no passado.');
     }
 
-    const age = calcIdade(dataNascimento);
+    const backendDataNascimento = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const age = calcIdade(backendDataNascimento);
     const isMenorDeIdade = age < 18;
 
     let cleanRespTel = '';
@@ -187,7 +189,7 @@ export function PacientePerfilScreen() {
         nome,
         cpf: cleanCpf,
         telefone: cleanTelefone,
-        dataNascimento,
+        dataNascimento: backendDataNascimento,
         tipoAtendimento,
         responsavelNome: isMenorDeIdade ? respNome : null,
         responsavelCpf: isMenorDeIdade && respCpf ? respCpf.replace(/\D/g, '') : null,
@@ -232,7 +234,14 @@ export function PacientePerfilScreen() {
               setNome(perfil?.nome || '');
               setCpf(perfil?.cpf || '');
               setTelefone(perfil?.telefone || '');
-              setDataNascimento(perfil?.dataNascimento ? perfil.dataNascimento.split('T')[0] : '');
+              
+              if (perfil?.dataNascimento) {
+                const [y, m, d] = perfil.dataNascimento.split('T')[0].split('-');
+                setDataNascimento(`${d}/${m}/${y}`);
+              } else {
+                setDataNascimento('');
+              }
+              
               setTipoAtendimento(perfil?.tipoAtendimento || 'ADULTO');
               setRespNome(perfil?.responsavelNome || '');
               setRespTelefone(perfil?.responsavelTelefone || '');
@@ -413,17 +422,17 @@ export function PacientePerfilScreen() {
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'CPF (Quem iniciou o contato) *' : 'CPF *'}
               </Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={cpf} onChangeText={setCpf} />
+              <MaskedTextInput style={styles.input} mask="999.999.999-99" keyboardType="numeric" value={cpf} onChangeText={(text) => setCpf(text)} />
 
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'Telefone (Quem iniciou o contato) *' : 'Telefone *'}
               </Text>
-              <TextInput style={styles.input} keyboardType="phone-pad" value={telefone} onChangeText={setTelefone} />
+              <MaskedTextInput style={styles.input} mask="(99) 99999-9999" keyboardType="phone-pad" value={telefone} onChangeText={(text) => setTelefone(text)} />
 
               <Text style={styles.inputLabel}>
-                {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) * (AAAA-MM-DD)' : 'Data de Nascimento * (AAAA-MM-DD)'}
+                {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) *' : 'Data de Nascimento *'}
               </Text>
-              <TextInput style={styles.input} value={dataNascimento} onChangeText={setDataNascimento} />
+              <MaskedTextInput style={styles.input} mask="99/99/9999" keyboardType="numeric" value={dataNascimento} onChangeText={(text) => setDataNascimento(text)} />
 
               {isMenorEdicao && (
                 <View style={styles.alertBox}>
@@ -456,10 +465,10 @@ export function PacientePerfilScreen() {
                   <TextInput style={[styles.input, !respNome && styles.inputAlerta]} value={respNome} onChangeText={setRespNome} />
 
                   <Text style={styles.inputLabel}>Telefone do Responsável *</Text>
-                  <TextInput style={[styles.input, !respTelefone && styles.inputAlerta]} value={respTelefone} onChangeText={setRespTelefone} />
+                  <MaskedTextInput style={[styles.input, !respTelefone && styles.inputAlerta]} mask="(99) 99999-9999" keyboardType="phone-pad" value={respTelefone} onChangeText={(text) => setRespTelefone(text)} />
 
                   <Text style={styles.inputLabel}>CPF do Responsável (Opcional)</Text>
-                  <TextInput style={styles.input} keyboardType="numeric" value={respCpf} onChangeText={setRespCpf} />
+                  <MaskedTextInput style={styles.input} mask="999.999.999-99" keyboardType="numeric" value={respCpf} onChangeText={(text) => setRespCpf(text)} />
                 </View>
               )}
 
@@ -474,10 +483,10 @@ export function PacientePerfilScreen() {
                   <TextInput style={[styles.input, !parceiroNome && styles.inputAlerta]} value={parceiroNome} onChangeText={setParceiroNome} />
 
                   <Text style={styles.inputLabel}>CPF do(a) Parceiro(a) *</Text>
-                  <TextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} keyboardType="numeric" value={parceiroCpf} onChangeText={setParceiroCpf} />
+                  <MaskedTextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} mask="999.999.999-99" keyboardType="numeric" value={parceiroCpf} onChangeText={(text) => setParceiroCpf(text)} />
 
                   <Text style={styles.inputLabel}>Telefone do(a) Parceiro(a) *</Text>
-                  <TextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} keyboardType="phone-pad" value={parceiroTelefone} onChangeText={setParceiroTelefone} />
+                  <MaskedTextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} mask="(99) 99999-9999" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={(text) => setParceiroTelefone(text)} />
                 </View>
               )}
 

@@ -9,6 +9,7 @@ interface AuthState {
   login: (token: string, userData: any) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
+  setUser: (userData: any) => Promise<void>;
 }
 
 const TOKEN_KEY = 'clinic_jwt_token';
@@ -39,6 +40,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.deleteItemAsync(USER_KEY);
     }
     set({ token: null, user: null });
+  },
+
+  setUser: async (userData) => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+    } else {
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(userData));
+    }
+    set({ user: userData });
   },
 
   hydrate: async () => {

@@ -8,10 +8,10 @@ const JWT_SECRET = 'super-secret-clinic-key';
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, matricula, semestre } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Preencha todos os campos.' });
+    if (!name || !email || !password || !matricula || !semestre) {
+      return res.status(400).json({ error: 'Preencha todos os campos, incluindo matrícula e semestre.' });
     }
 
     const existingUser = await prisma.usuario.findUnique({ where: { email } });
@@ -20,11 +20,26 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Cria o usuário e o perfil de Estagiário na mesma transação
     const user = await prisma.usuario.create({
-      data: { nome: name, email, senhaHash: hashedPassword, perfil: 'PACIENTE', status: 'PENDENTE' }
+      data: { 
+        nome: name, 
+        email, 
+        senhaHash: hashedPassword, 
+        perfil: 'ESTAGIARIO', 
+        status: 'PENDENTE',
+        Estagiario: {
+          create: {
+            matricula,
+            semestre: parseInt(semestre),
+            ativo: false // Aguardando aprovação do Gestor
+          }
+        }
+      }
     });
 
-    res.status(201).json({ message: 'Conta criada! Aguarde a aprovação de um responsável.', user: { id: user.id, email: user.email } });
+    res.status(201).json({ message: 'Conta de estagiário criada! Aguarde a aprovação do Gestor.', user: { id: user.id, email: user.email } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro interno no servidor' });
@@ -68,6 +83,34 @@ export const login = async (req: Request, res: Response) => {
       token,
       user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, status: user.status }
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'E-mail é obrigatório.' });
+    }
+
+    const user = await prisma.usuario.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ error: 'Conta não encontrada.' });
+    }
+
+    // Para MVP: Gera senha temporária alfanumérica de 6 dígitos
+    const tempPassword = Math.random().toString(36).slice(-6).toUpperCase();
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    await prisma.usuario.update({
+      where: { id: user.id },
+      data: { senhaHash: hashedPassword }
+    });
+
+    res.json({ message: 'Senha redefinida com sucesso.', novaSenha: tempPassword });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro interno no servidor' });

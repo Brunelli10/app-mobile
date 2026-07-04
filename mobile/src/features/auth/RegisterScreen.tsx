@@ -13,6 +13,8 @@ const registerSchema = z.object({
   name: z.string().min(3, 'O nome deve ter no mínimo 3 caracteres.'),
   email: z.string().email('Digite um e-mail válido.'),
   password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres.'),
+  matricula: z.string().min(4, 'Matrícula inválida.'),
+  semestre: z.string().min(1, 'Semestre é obrigatório.')
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -28,8 +30,14 @@ export function RegisterScreen() {
   const handleRegister = async (data: RegisterFormData) => {
     setLoading(true);
     try {
-      await api.post('/auth/register', { name: data.name, email: data.email, password: data.password });
-      Alert.alert('Sucesso', 'Sua conta foi criada no banco! Pode fazer login.', [
+      await api.post('/auth/register', { 
+        name: data.name, 
+        email: data.email, 
+        password: data.password,
+        matricula: data.matricula,
+        semestre: data.semestre
+      });
+      Alert.alert('Solicitação Enviada', 'Seu pré-cadastro como Estagiário foi realizado. Aguarde a aprovação do Gestor da clínica para acessar.', [
         { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (err: any) {
@@ -45,8 +53,8 @@ export function RegisterScreen() {
         <ScrollView contentContainerStyle={styles.container}>
           
           <View style={styles.header}>
-            <Text style={styles.title}>Criar Conta</Text>
-            <Text style={styles.subtitle}>Junte-se à Clínica Psicologia SEP para gerenciar seus agendamentos.</Text>
+            <Text style={styles.title}>Solicitar Acesso</Text>
+            <Text style={styles.subtitle}>Cadastro exclusivo para Profissionais e Estagiários da Clínica SEP.</Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -98,8 +106,40 @@ export function RegisterScreen() {
               )}
             />
 
+            <Controller
+              control={control}
+              name="matricula"
+              render={({ field: { onChange, value } }) => (
+                <Input 
+                  label="Matrícula" 
+                  icon="card-outline" 
+                  placeholder="Sua matrícula (ex: 2024001)"
+                  value={value}
+                  onChangeText={onChange}
+                  keyboardType="number-pad"
+                  errorMessage={errors.matricula?.message}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="semestre"
+              render={({ field: { onChange, value } }) => (
+                <Input 
+                  label="Semestre Atual" 
+                  icon="school-outline" 
+                  placeholder="Ex: 8"
+                  value={value}
+                  onChangeText={onChange}
+                  keyboardType="number-pad"
+                  errorMessage={errors.semestre?.message}
+                />
+              )}
+            />
+
             <Button 
-              title="CADASTRAR" 
+              title="ENVIAR SOLICITAÇÃO" 
               style={styles.registerButton} 
               onPress={handleSubmit(handleRegister)} 
               loading={loading}

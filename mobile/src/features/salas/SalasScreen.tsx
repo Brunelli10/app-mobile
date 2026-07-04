@@ -176,7 +176,7 @@ export function SalasScreen() {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity onPress={() => navigation.navigate('Configurações', { screen: 'Notificacoes' })} style={{ marginRight: 14 }}>
+            <TouchableOpacity onPress={() => navigation.navigate('Notificacoes')} style={{ marginRight: 14 }}>
               <Ionicons name="notifications-outline" size={22} color={colors.textHeader} />
               {naoLidas > 0 && (
                 <View style={styles.badgeTopRight}>
@@ -184,9 +184,9 @@ export function SalasScreen() {
                 </View>
               )}
             </TouchableOpacity>
-            <View style={styles.avatar}>
+            <TouchableOpacity style={styles.avatar} onPress={() => navigation.navigate('Configurações')} activeOpacity={0.85}>
               <Text style={styles.avatarText}>{user?.nome?.substring(0, 2).toUpperCase() || 'ES'}</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 

@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AjustesScreen } from '../features/ajustes/AjustesScreen';
 import { PerfilScreen } from '../features/ajustes/PerfilScreen';
 import { SessoesDoPacienteScreen } from '../features/sessoes/SessoesDoPacienteScreen';
-import { NotificacoesScreen } from '../features/notificacoes/NotificacoesScreen';
 import { useNotificacoesStore } from '../store/useNotificacoesStore';
 import { useNotificacoesCount } from '../hooks/useNotificacoesCount';
 
@@ -28,7 +27,6 @@ function PerfilPacienteNavigator() {
     <PerfilPacienteStack.Navigator screenOptions={{ headerShown: false }}>
       <PerfilPacienteStack.Screen name="PerfilMain" component={AjustesScreen} />
       <PerfilPacienteStack.Screen name="Perfil" component={PerfilScreen} />
-      <PerfilPacienteStack.Screen name="Notificacoes" component={NotificacoesScreen} />
     </PerfilPacienteStack.Navigator>
   );
 }

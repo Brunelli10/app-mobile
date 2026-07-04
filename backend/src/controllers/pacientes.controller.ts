@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import { cpf as cpfValidator } from 'cpf-cnpj-validator';
 
 const prisma = new PrismaClient();
 
@@ -95,6 +97,45 @@ export const getPacientePerfil = async (req: Request, res: Response) => {
   }
 };
 
+// ─── POST /pacientes/convite ──────────────────────────────────────────────────
+export const convitePaciente = async (req: Request, res: Response) => {
+  try {
+    const { nome, email } = req.body;
+    
+    if (!nome || !email) {
+      return res.status(400).json({ error: 'Nome e e-mail são obrigatórios para o convite.' });
+    }
+
+    const existingUser = await prisma.usuario.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Já existe uma conta com este e-mail.' });
+    }
+
+    const senhaProvisoria = 'clinica123';
+    const hashedPassword = await bcrypt.hash(senhaProvisoria, 10);
+
+    const user = await prisma.usuario.create({
+      data: { 
+        nome, 
+        email, 
+        senhaHash: hashedPassword, 
+        perfil: 'PACIENTE', 
+        status: 'ATIVO' 
+      }
+    });
+
+    res.status(201).json({ 
+      message: 'Acesso gerado com sucesso!', 
+      senhaProvisoria, 
+      email,
+      usuarioId: user.id
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao gerar convite para paciente.' });
+  }
+};
+
 // ─── POST /pacientes ──────────────────────────────────────────────────────────
 export const createPaciente = async (req: Request, res: Response) => {
   try {
@@ -117,8 +158,8 @@ export const createPaciente = async (req: Request, res: Response) => {
     }
 
     // Validações de formato e limites lógicos
-    if (!/^\d{11}$/.test(cpf)) {
-      return res.status(400).json({ error: 'CPF do paciente deve ter exatamente 11 dígitos numéricos.' });
+    if (!cpfValidator.isValid(cpf)) {
+      return res.status(400).json({ error: 'O CPF do paciente é inválido.' });
     }
     if (!/^\d{10,11}$/.test(telefone)) {
       return res.status(400).json({ error: 'Telefone do paciente deve ter 10 ou 11 dígitos numéricos.' });
@@ -143,8 +184,8 @@ export const createPaciente = async (req: Request, res: Response) => {
       });
     }
 
-    if (responsavelCpf && !/^\d{11}$/.test(responsavelCpf)) {
-      return res.status(400).json({ error: 'CPF do responsável deve ter exatamente 11 dígitos numéricos.' });
+    if (responsavelCpf && !cpfValidator.isValid(responsavelCpf)) {
+      return res.status(400).json({ error: 'O CPF do responsável é inválido.' });
     }
     if (responsavelTelefone && !/^\d{10,11}$/.test(responsavelTelefone)) {
       return res.status(400).json({ error: 'Telefone do responsável deve ter 10 ou 11 dígitos numéricos.' });
@@ -155,8 +196,8 @@ export const createPaciente = async (req: Request, res: Response) => {
       if (!parceiroNome || !parceiroCpf || !parceiroTelefone) {
         return res.status(422).json({ error: 'Para atendimento de casal, Nome, CPF e Telefone do Cônjuge/Parceiro são obrigatórios.' });
       }
-      if (!/^\d{11}$/.test(parceiroCpf)) {
-        return res.status(400).json({ error: 'CPF do Cônjuge/Parceiro deve ter exatamente 11 dígitos numéricos.' });
+      if (!cpfValidator.isValid(parceiroCpf)) {
+        return res.status(400).json({ error: 'O CPF do Cônjuge/Parceiro é inválido.' });
       }
       if (!/^\d{10,11}$/.test(parceiroTelefone)) {
         return res.status(400).json({ error: 'Telefone do Cônjuge/Parceiro deve ter 10 ou 11 dígitos numéricos.' });
@@ -213,8 +254,8 @@ export const updatePaciente = async (req: Request, res: Response) => {
     }
 
     // Validações de formato e limites lógicos
-    if (!/^\d{11}$/.test(cpf)) {
-      return res.status(400).json({ error: 'CPF do paciente deve ter exatamente 11 dígitos numéricos.' });
+    if (!cpfValidator.isValid(cpf)) {
+      return res.status(400).json({ error: 'O CPF do paciente é inválido.' });
     }
     if (!/^\d{10,11}$/.test(telefone)) {
       return res.status(400).json({ error: 'Telefone do paciente deve ter 10 ou 11 dígitos numéricos.' });
@@ -238,8 +279,8 @@ export const updatePaciente = async (req: Request, res: Response) => {
       });
     }
 
-    if (responsavelCpf && !/^\d{11}$/.test(responsavelCpf)) {
-      return res.status(400).json({ error: 'CPF do responsável deve ter exatamente 11 dígitos numéricos.' });
+    if (responsavelCpf && !cpfValidator.isValid(responsavelCpf)) {
+      return res.status(400).json({ error: 'O CPF do responsável é inválido.' });
     }
     if (responsavelTelefone && !/^\d{10,11}$/.test(responsavelTelefone)) {
       return res.status(400).json({ error: 'Telefone do responsável deve ter 10 ou 11 dígitos numéricos.' });
@@ -250,8 +291,8 @@ export const updatePaciente = async (req: Request, res: Response) => {
       if (!parceiroNome || !parceiroCpf || !parceiroTelefone) {
         return res.status(422).json({ error: 'Para atendimento de casal, Nome, CPF e Telefone do Cônjuge/Parceiro são obrigatórios.' });
       }
-      if (!/^\d{11}$/.test(parceiroCpf)) {
-        return res.status(400).json({ error: 'CPF do Cônjuge/Parceiro deve ter exatamente 11 dígitos numéricos.' });
+      if (!cpfValidator.isValid(parceiroCpf)) {
+        return res.status(400).json({ error: 'O CPF do Cônjuge/Parceiro é inválido.' });
       }
       if (!/^\d{10,11}$/.test(parceiroTelefone)) {
         return res.status(400).json({ error: 'Telefone do Cônjuge/Parceiro deve ter 10 ou 11 dígitos numéricos.' });

@@ -125,26 +125,6 @@ export function AjustesScreen() {
           </View>
         )}
 
-        {/* ─── Métricas do Gestor ─────────────────────── */}
-        {isGestorOrRoot && metricas && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Visão Gerencial</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Text style={[styles.statValue, { color: colors.primary }]}>{metricas.sessoesSemana}</Text>
-                <Text style={styles.statLabel}>Sessões na Semana</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={[styles.statValue, { color: '#F59E0B' }]}>{metricas.pacientesPendentes}</Text>
-                <Text style={styles.statLabel}>Pendentes</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={[styles.statValue, { color: '#10B981' }]}>{metricas.taxaPresenca}%</Text>
-                <Text style={styles.statLabel}>Presença</Text>
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* ─── Configurações Específicas por Perfil ──────────────────────────── */}
         <View style={styles.section}>

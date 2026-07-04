@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Modal, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Modal, Alert, ActivityIndicator, ScrollView, Platform } from 'react-native';
+import { MaskedTextInput } from 'react-native-masked-text';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -39,6 +40,7 @@ export function PacientesScreen() {
   const [parceiroNome, setParceiroNome] = useState('');
   const [parceiroCpf, setParceiroCpf] = useState('');
   const [parceiroTelefone, setParceiroTelefone] = useState('');
+  const [emailAcesso, setEmailAcesso] = useState('');
 
   const idadeCalculada = calcularIdade(dataNascimento);
   const isMenor = dataNascimento.length >= 10 && idadeCalculada < 18;
@@ -69,6 +71,7 @@ export function PacientesScreen() {
     setNome(''); setCpf(''); setTelefone(''); setDataNascimento('');
     setTipoAtendimento('ADULTO'); setRespNome(''); setRespTelefone(''); setRespCpf('');
     setParceiroNome(''); setParceiroCpf(''); setParceiroTelefone('');
+    setEmailAcesso('');
   };
 
   const handleCreatePaciente = async () => {
@@ -81,7 +84,7 @@ export function PacientesScreen() {
       return Alert.alert('Nome Inválido', 'O nome deve ter ao menos 3 caracteres.');
     }
 
-    // Validar CPF (apenas números, exatamente 11 dígitos)
+    // Validar CPF usando o formato limpo
     const cleanCpf = cpf.replace(/\D/g, '');
     if (cleanCpf.length !== 11) {
       return Alert.alert('CPF Inválido', 'O CPF deve conter exatamente 11 dígitos numéricos.');
@@ -93,14 +96,14 @@ export function PacientesScreen() {
       return Alert.alert('Telefone Inválido', 'O telefone deve conter 10 ou 11 dígitos numéricos (com DDD).');
     }
 
-    // Validar Data de Nascimento (AAAA-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataNascimento)) {
-      return Alert.alert('Data de Nascimento Inválida', 'A data deve estar no formato AAAA-MM-DD (ex: 1990-06-15).');
+    // A máscara de data fornece DD/MM/YYYY. O Backend espera AAAA-MM-DD.
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dataNascimento)) {
+      return Alert.alert('Data de Nascimento Inválida', 'A data deve estar no formato DD/MM/YYYY (ex: 15/06/1990).');
     }
-    const parts = dataNascimento.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const day = parseInt(parts[2], 10);
+    const [dayStr, monthStr, yearStr] = dataNascimento.split('/');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10) - 1;
+    const day = parseInt(dayStr, 10);
     const dateObj = new Date(year, month, day);
     if (
       dateObj.getFullYear() !== year ||
@@ -110,8 +113,11 @@ export function PacientesScreen() {
     ) {
       return Alert.alert('Data de Nascimento Inválida', 'Insira uma data de nascimento real e no passado.');
     }
-
-    const calculatedAge = calcularIdade(dataNascimento);
+    
+    // Converter para formato backend YYYY-MM-DD
+    const backendDataNascimento = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    const calculatedAge = calcularIdade(backendDataNascimento);
     const isMenorDeIdade = calculatedAge < 18;
 
     // Se menor, responsável é obrigatório
@@ -161,7 +167,7 @@ export function PacientesScreen() {
         nome,
         cpf: cleanCpf,
         telefone: cleanTelefone,
-        dataNascimento,
+        dataNascimento: backendDataNascimento,
         tipoAtendimento,
         responsavelNome: isMenorDeIdade ? respNome : null,
         responsavelCpf: isMenorDeIdade && respCpf ? respCpf.replace(/\D/g, '') : null,
@@ -170,10 +176,21 @@ export function PacientesScreen() {
         parceiroCpf: tipoAtendimento === 'CASAL' ? cleanParcCpf : null,
         parceiroTelefone: tipoAtendimento === 'CASAL' ? cleanParcTel : null
       });
+
+      let acessoMsg = '';
+      if (emailAcesso) {
+        try {
+          const resp = await api.post('/pacientes/convite', { nome, email: emailAcesso.toLowerCase().trim() });
+          acessoMsg = `\n\nConta no App criada!\nSenha provisória: ${resp.data.senhaProvisoria}`;
+        } catch (e: any) {
+          acessoMsg = `\n\n(Aviso: O paciente foi salvo, mas o acesso ao app falhou: ${e.response?.data?.error || 'Erro desconhecido'})`;
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['pacientes'] });
       setModalVisible(false);
       resetForm();
-      Alert.alert('Sucesso', 'Paciente cadastrado com sucesso!');
+      Alert.alert('Sucesso', `Paciente cadastrado com sucesso!${acessoMsg}`);
     } catch (e: any) {
       Alert.alert('Erro', e.response?.data?.error || 'Erro ao cadastrar.');
     } finally {
@@ -319,17 +336,20 @@ export function PacientesScreen() {
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'CPF (Quem iniciou o contato) *' : 'CPF *'}
               </Text>
-              <TextInput style={styles.input} placeholder="00000000000" keyboardType="numeric" value={cpf} onChangeText={setCpf} />
+              <MaskedTextInput style={styles.input} mask="999.999.999-99" placeholder="000.000.000-00" keyboardType="numeric" value={cpf} onChangeText={(text) => setCpf(text)} />
 
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'Telefone (Quem iniciou o contato) *' : 'Telefone *'}
               </Text>
-              <TextInput style={styles.input} placeholder="11999990000" keyboardType="phone-pad" value={telefone} onChangeText={setTelefone} />
+              <MaskedTextInput style={styles.input} mask="(99) 99999-9999" placeholder="(11) 99999-0000" keyboardType="phone-pad" value={telefone} onChangeText={(text) => setTelefone(text)} />
+
+              <Text style={styles.inputLabel}>E-mail de Acesso ao App (Opcional)</Text>
+              <TextInput style={styles.input} placeholder="Preencha para gerar login..." keyboardType="email-address" autoCapitalize="none" value={emailAcesso} onChangeText={setEmailAcesso} />
 
               <Text style={styles.inputLabel}>
-                {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) * (AAAA-MM-DD)' : 'Data de Nascimento * (AAAA-MM-DD)'}
+                {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) *' : 'Data de Nascimento *'}
               </Text>
-              <TextInput style={styles.input} placeholder="1990-06-15" value={dataNascimento} onChangeText={setDataNascimento} />
+              <MaskedTextInput style={styles.input} mask="99/99/9999" placeholder="DD/MM/AAAA" keyboardType="numeric" value={dataNascimento} onChangeText={(text) => setDataNascimento(text)} />
 
               {isMenor && (
                 <View style={styles.alertBox}>
@@ -362,10 +382,10 @@ export function PacientesScreen() {
                   <TextInput style={[styles.input, !respNome && styles.inputAlerta]} placeholder="Ex: João da Silva" value={respNome} onChangeText={setRespNome} />
 
                   <Text style={styles.inputLabel}>Telefone do Responsável *</Text>
-                  <TextInput style={[styles.input, !respTelefone && styles.inputAlerta]} placeholder="11999990000" keyboardType="phone-pad" value={respTelefone} onChangeText={setRespTelefone} />
+                  <MaskedTextInput style={[styles.input, !respTelefone && styles.inputAlerta]} mask="(99) 99999-9999" placeholder="(11) 99999-0000" keyboardType="phone-pad" value={respTelefone} onChangeText={(text) => setRespTelefone(text)} />
 
                   <Text style={styles.inputLabel}>CPF do Responsável (Opcional)</Text>
-                  <TextInput style={styles.input} placeholder="00000000000" keyboardType="numeric" value={respCpf} onChangeText={setRespCpf} />
+                  <MaskedTextInput style={styles.input} mask="999.999.999-99" placeholder="000.000.000-00" keyboardType="numeric" value={respCpf} onChangeText={(text) => setRespCpf(text)} />
                 </View>
               )}
 
@@ -380,10 +400,10 @@ export function PacientesScreen() {
                   <TextInput style={[styles.input, !parceiroNome && styles.inputAlerta]} placeholder="Ex: Carlos Oliveira" value={parceiroNome} onChangeText={setParceiroNome} />
 
                   <Text style={styles.inputLabel}>CPF do(a) Parceiro(a) *</Text>
-                  <TextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} placeholder="00000000000" keyboardType="numeric" value={parceiroCpf} onChangeText={setParceiroCpf} />
+                  <MaskedTextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} mask="999.999.999-99" placeholder="000.000.000-00" keyboardType="numeric" value={parceiroCpf} onChangeText={(text) => setParceiroCpf(text)} />
 
                   <Text style={styles.inputLabel}>Telefone do(a) Parceiro(a) *</Text>
-                  <TextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} placeholder="11999990000" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={setParceiroTelefone} />
+                  <MaskedTextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} mask="(99) 99999-9999" placeholder="(11) 99999-0000" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={(text) => setParceiroTelefone(text)} />
                 </View>
               )}
 
