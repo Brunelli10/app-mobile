@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { notificarGestores, notificarEstagiario } from '../utils/notificacoes.helper';
 
-const prisma = new PrismaClient();
 
 export const updateStatusSessao = async (req: Request, res: Response) => {
   try {
@@ -135,6 +134,82 @@ export const updateSupervisorNotaSessao = async (req: Request, res: Response) =>
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao registrar feedback de supervisão.' });
+  }
+};
+
+// ─── GET /sessoes/supervisao ─────────────────────────────────────────────────
+export const getSessoesParaSupervisao = async (req: Request, res: Response) => {
+  try {
+    const userPerfil = req.user!.perfil;
+    if (!['GESTOR', 'ROOT', 'SUPERVISOR'].includes(userPerfil)) {
+      return res.status(403).json({ error: 'Acesso Negado: Apenas supervisores e gestores podem acessar a tela de supervisão.' });
+    }
+
+    const { estagiarioId, status, dataInicio, dataFim, feedbackStatus } = req.query;
+
+    const whereClause: any = {};
+
+    // Filtro por estagiário
+    if (estagiarioId) {
+      whereClause.agendamento = { estagiarioId: parseInt(estagiarioId as string) };
+    }
+
+    // Filtro por status da sessão
+    if (status) {
+      whereClause.status = status as string;
+    }
+
+    // Filtro por período
+    if (dataInicio || dataFim) {
+      whereClause.dataSessao = {};
+      if (dataInicio) whereClause.dataSessao.gte = new Date(`${dataInicio}T00:00:00`);
+      if (dataFim) whereClause.dataSessao.lte = new Date(`${dataFim}T23:59:59`);
+    }
+
+    // Filtro por status do feedback
+    if (feedbackStatus === 'COM_FEEDBACK') {
+      whereClause.supervisorNota = { not: null };
+    } else if (feedbackStatus === 'SEM_FEEDBACK') {
+      whereClause.supervisorNota = null;
+    }
+
+    const sessoes = await prisma.sessao.findMany({
+      where: whereClause,
+      include: {
+        agendamento: {
+          include: {
+            estagiario: { include: { usuario: { select: { nome: true } } } },
+            sala: { select: { nome: true } },
+            pacientes: { include: { paciente: { select: { id: true, nome: true, tipoAtendimento: true } } } }
+          }
+        }
+      },
+      orderBy: { dataSessao: 'desc' },
+      take: 100
+    });
+
+    const formatted = sessoes.map(s => ({
+      id: s.id,
+      dataSessao: s.dataSessao,
+      horarioInicio: s.horarioInicio,
+      status: s.status,
+      notas: s.notas,
+      supervisorNota: s.supervisorNota,
+      estagiario: s.agendamento.estagiario.usuario.nome,
+      estagiarioId: s.agendamento.estagiarioId,
+      sala: s.agendamento.sala.nome,
+      pacientes: s.agendamento.pacientes.map(p => ({
+        id: p.paciente.id,
+        nome: p.paciente.nome,
+        tipoAtendimento: p.paciente.tipoAtendimento === 'INDIVIDUAL' ? 'ADULTO' : p.paciente.tipoAtendimento
+      })),
+      feedbackStatus: s.supervisorNota ? 'COM_FEEDBACK' : 'SEM_FEEDBACK'
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar sessões para supervisão.' });
   }
 };
 

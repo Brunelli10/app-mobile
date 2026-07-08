@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { colors } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useFocusEffect } from '@react-navigation/native';
+
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  AGENDADA:  { label: 'Sessão Confirmada', color: '#059669', bg: '#ECFDF5' },
+  REALIZADA: { label: 'Sessão Confirmada', color: '#059669', bg: '#ECFDF5' },
+  CONCLUIDA: { label: 'Concluída',         color: '#10B981', bg: '#DCFCE7' },
+  FALTA:     { label: 'Falta',             color: '#EF4444', bg: '#FEE2E2' },
+  CANCELADA: { label: 'Cancelada',         color: '#94A3B8', bg: '#F1F5F9' },
+};
 
 export function SessoesDoPacienteScreen() {
   const { user } = useAuthStore();
@@ -12,12 +21,16 @@ export function SessoesDoPacienteScreen() {
   const { data: sessoes, isLoading, refetch } = useQuery({ 
     queryKey: ['minhas-sessoes-paciente'], 
     queryFn: async () => {
-      // Aqui idealmente consumiria uma rota tipo GET /paciente/minhas-sessoes
-      // Por enquanto, faremos o mock visual da estrutura
       const { data } = await api.get('/meus-agendamentos').catch(() => ({ data: [] }));
       return data || [];
     }
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,22 +55,25 @@ export function SessoesDoPacienteScreen() {
             showsVerticalScrollIndicator={false}
             onRefresh={refetch}
             refreshing={isLoading}
-            renderItem={({ item }) => (
-              <View style={styles.agendaCard}>
-                <View style={styles.dateBadge}>
-                  <Text style={styles.badgeDayName}>{item.diaExtenso || 'DIA'}</Text>
-                  <Text style={styles.badgeDayNum}>{item.dia || '--'}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.timeText}>{item.horarioInicio} - {item.horarioFim}</Text>
-                  <Text style={styles.roomText}>Sala: {item.salaNome}</Text>
-                  <Text style={styles.internText}>Psicólogo(a): {item.estagiarioNome || 'A definir'}</Text>
-                  <View style={styles.typeTag}>
-                    <Text style={styles.typeTagText}>Sessão Confirmada</Text>
+            renderItem={({ item }) => {
+              const statusCfg = STATUS_MAP[item.status] || STATUS_MAP['AGENDADA'];
+              return (
+                <View style={styles.agendaCard}>
+                  <View style={styles.dateBadge}>
+                    <Text style={styles.badgeDayName}>{item.diaExtenso || 'DIA'}</Text>
+                    <Text style={styles.badgeDayNum}>{item.dia || '--'}</Text>
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.timeText}>{item.horarioInicio} - {item.horarioFim}</Text>
+                    <Text style={styles.roomText}>Sala: {item.salaNome}</Text>
+                    <Text style={styles.internText}>Psicólogo(a): {item.estagiarioNome || 'A definir'}</Text>
+                    <View style={[styles.typeTag, { backgroundColor: statusCfg.bg }]}>
+                      <Text style={[styles.typeTagText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            )}
+              );
+            }}
           />
         )}
       </View>

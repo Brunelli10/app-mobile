@@ -117,7 +117,7 @@ describe('👥 Auditoria Arquitetural — Matriz de Acesso dos Atores', () => {
         dataNascimento: new Date('1990-05-15'),
         cpf: `CPF-${TS}`.slice(0, 11),
         telefone: '11999999999',
-        tipoAtendimento: 'INDIVIDUAL',
+        tipoAtendimento: 'ADULTO',
         ativo: true,
       },
     });

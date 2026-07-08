@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 const PERFIL_LABELS: Record<string, string> = {
   PACIENTE: 'Paciente',
@@ -49,17 +49,24 @@ export function AjustesScreen() {
   const isEstagiario = user?.perfil === 'ESTAGIARIO';
   const isGestorOrRoot = user?.perfil === 'GESTOR' || user?.perfil === 'ROOT';
 
-  const { data: metricas } = useQuery({
+  const { data: metricas, refetch: refetchMetricas } = useQuery({
     queryKey: ['dashboard-metricas'],
     queryFn: async () => (await api.get('/dashboard/metricas')).data,
     enabled: isGestorOrRoot
   });
 
-  const { data: meusAgendamentos } = useQuery({
+  const { data: meusAgendamentos, refetch: refetchMeusAgendamentos } = useQuery({
     queryKey: ['meus-agendamentos'],
     queryFn: async () => (await api.get('/meus-agendamentos')).data,
     enabled: isEstagiario
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGestorOrRoot) refetchMetricas();
+      if (isEstagiario) refetchMeusAgendamentos();
+    }, [isGestorOrRoot, isEstagiario, refetchMetricas, refetchMeusAgendamentos])
+  );
 
   const sessoesHoje = meusAgendamentos?.filter((a: any) => {
     const hoje = new Date().toISOString().split('T')[0];
@@ -137,8 +144,8 @@ export function AjustesScreen() {
           {/* Menus do Paciente */}
           {user?.perfil === 'PACIENTE' && (
             <>
-              <MenuRow icon="document-text-outline" label="Meu Prontuário" sublabel="Ver histórico e atestados" onPress={() => Alert.alert('Em desenvolvimento', 'Seu prontuário eletrônico estará disponível em breve.')} />
-              <MenuRow icon="chatbubble-ellipses-outline" label="Falar com Responsável" sublabel="Contato com seu estagiário" onPress={() => Alert.alert('Em desenvolvimento', 'O chat integrado será lançado na próxima versão.')} />
+              <MenuRow icon="document-text-outline" label="Meu Prontuário" sublabel="Ver histórico e atestados" onPress={() => navigation.navigate('MeuProntuario')} />
+              <MenuRow icon="chatbubble-ellipses-outline" label="Falar com Responsável" sublabel="Contato com seu estagiário" onPress={() => navigation.navigate('ContatoResponsavel')} />
             </>
           )}
 
@@ -146,7 +153,7 @@ export function AjustesScreen() {
           {isEstagiario && (
             <>
               <MenuRow icon="calendar-outline" label="Minha Grade de Horários" sublabel="Gerenciar dias e horários livres" onPress={() => navigation.navigate('GradeHorarios')} />
-              <MenuRow icon="person-add-outline" label="Meus Pacientes" sublabel="Lista e ficha clínica" onPress={() => navigation.navigate('Pacientes')} />
+              <MenuRow icon="person-add-outline" label="Meus Pacientes" sublabel="Lista e ficha clínica" onPress={() => navigation.navigate('MeusPacientes')} />
               <MenuRow icon="ribbon-outline" label="Supervisão" sublabel="Notas e relatórios do supervisor" onPress={() => navigation.navigate('Supervisao')} />
             </>
           )}

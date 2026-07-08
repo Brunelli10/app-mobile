@@ -65,6 +65,7 @@ function ConfiguracoesNavigator() {
       <ConfiguracoesStack.Screen name="Perfil" component={PerfilScreen} />
       <ConfiguracoesStack.Screen name="Supervisao" component={SupervisaoScreen} />
       <ConfiguracoesStack.Screen name="GradeHorarios" component={GradeHorariosScreen} />
+      <ConfiguracoesStack.Screen name="MeusPacientes" component={PacientesScreen} />
     </ConfiguracoesStack.Navigator>
   );
 }

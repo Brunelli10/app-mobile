@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Modal, Alert, ActivityIndicator, ScrollView, Platform } from 'react-native';
 import { TextInputMask } from 'react-native-masked-text';
 import { colors, spacing, shadows } from '../../config/theme';
@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 // ─── Calcular idade localmente para feedback imediato na UI ───────────────────
 const calcularIdade = (dataNasc: string): number => {
@@ -45,21 +45,32 @@ export function PacientesScreen() {
   const idadeCalculada = calcularIdade(dataNascimento);
   const isMenor = dataNascimento.length >= 10 && idadeCalculada < 18;
 
-  const { data: pacientes, isLoading } = useQuery({
+  const { data: pacientes, isLoading, refetch: refetchPacientes } = useQuery({
     queryKey: ['pacientes'],
     queryFn: async () => {
       const { data } = await api.get('/pacientes');
-      return data;
+      // Normaliza tipoAtendimento legado INDIVIDUAL → ADULTO como fallback client-side
+      return data.map((p: any) => ({
+        ...p,
+        tipoAtendimento: p.tipoAtendimento === 'INDIVIDUAL' ? 'ADULTO' : p.tipoAtendimento
+      }));
     }
   });
 
-  const { data: pendentes } = useQuery({
+  const { data: pendentes, refetch: refetchPendentes } = useQuery({
     queryKey: ['pacientes-pendentes'],
     queryFn: async () => {
       const { data } = await api.get('/pacientes/pendentes');
       return data;
     }
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchPacientes();
+      refetchPendentes();
+    }, [refetchPacientes, refetchPendentes])
+  );
 
   const filteredPacientes = pacientes?.filter((p: any) => {
     const matchesSearch = p.nome.toLowerCase().includes(search.toLowerCase());
@@ -309,7 +320,7 @@ export function PacientesScreen() {
                 }]}>
                   <Text style={[styles.tagText, {
                     color: item.tipoAtendimento === 'CRIANCA' ? colors.tagCrianca : (item.tipoAtendimento === 'CASAL' ? colors.tagCasal : colors.primary)
-                  }]}>{item.tipoAtendimento}</Text>
+                  }]}>{item.tipoAtendimento === 'CRIANCA' ? 'Criança' : item.tipoAtendimento === 'CASAL' ? 'Casal' : 'Adulto'}</Text>
                 </View>
               </TouchableOpacity>
             );

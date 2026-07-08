@@ -54,9 +54,16 @@ export function SalaDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
-  const { salaId, salaName } = route.params || {};
+  const { salaId, salaName, salaTipo } = route.params || {};
   const { user } = useAuthStore();
   const isGestorOrRoot = user?.perfil === 'GESTOR' || user?.perfil === 'ROOT';
+
+  // Filtro de compatibilidade sala × paciente
+  const isPacienteCompativel = (paciente: any): boolean => {
+    const tipo = paciente.tipoAtendimento === 'INDIVIDUAL' ? 'ADULTO' : paciente.tipoAtendimento;
+    if (salaTipo === 'LUDICA') return tipo === 'CRIANCA';
+    return true; // INDIVIDUAL e GRUPO aceitam todos os tipos
+  };
 
   const [viewMode, setViewMode] = useState<'month' | 'week'>('week');
   const [weekRef, setWeekRef] = useState(new Date());
@@ -317,7 +324,7 @@ export function SalaDetailsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.textHeader} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{salaName || 'Agendamento'}</Text>
+        <Text style={styles.headerTitle}>{salaName || 'Agendamento'}{salaTipo ? ` (${salaTipo === 'LUDICA' ? 'Lúdica' : salaTipo === 'GRUPO' ? 'Grupo' : 'Individual'})` : ''}</Text>
         {isGestorOrRoot ? (
           <TouchableOpacity style={styles.deleteHeaderButton} onPress={handleDeleteSala}>
             <Ionicons name="trash-outline" size={22} color="#EF4444" />
@@ -331,11 +338,17 @@ export function SalaDetailsScreen() {
 
         {/* ─── 1. Paciente ──────────────────────────────────────── */}
         <Text style={styles.sectionTitle}>1. Selecione o Paciente</Text>
+        {salaTipo === 'LUDICA' && (
+          <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, padding: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="information-circle" size={18} color="#D97706" />
+            <Text style={{ fontSize: 12, color: '#92400E', flex: 1 }}>Esta sala é lúdica/infantil. Apenas pacientes do tipo Criança são exibidos.</Text>
+          </View>
+        )}
         {loadingPacientes ? (
           <ActivityIndicator color={colors.primary} />
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pacientesScroll}>
-            {pacientes?.map((p: any) => {
+            {pacientes?.filter(isPacienteCompativel).map((p: any) => {
               const isActive = pacienteId === p.id;
               const calcIdade = (dn: string) => {
                 if (!dn) return 99;

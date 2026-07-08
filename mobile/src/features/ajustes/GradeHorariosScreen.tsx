@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../api/apiClient';
 
 const DIAS_NOMES = [
   { key: 1, label: 'Segunda-feira' },
@@ -14,19 +16,93 @@ const DIAS_NOMES = [
 ];
 
 const PERIODOS = [
-  { label: 'Manhã (08:00 – 12:00)', key: 'MANHA' },
-  { label: 'Tarde (13:00 – 18:00)', key: 'TARDE' },
-  { label: 'Noite (18:00 – 22:00)', key: 'NOITE' }
+  { label: 'Manhã (08:00 – 12:00)', key: 'MANHA', horaInicio: '08:00', horaFim: '12:00' },
+  { label: 'Tarde (13:00 – 18:00)', key: 'TARDE', horaInicio: '13:00', horaFim: '18:00' },
+  { label: 'Noite (18:00 – 22:00)', key: 'NOITE', horaInicio: '18:00', horaFim: '22:00' }
 ];
+
+// Converte dados da API para estado da UI
+const apiToState = (disponibilidades: any[]): { dias: number[]; periodos: string[] } => {
+  const dias = [...new Set(disponibilidades.map(d => d.diaSemana))];
+  const periodos: string[] = [];
+
+  // Detectar períodos a partir dos horários
+  const horasSet = disponibilidades.map(d => `${d.horaInicio}-${d.horaFim}`);
+  if (horasSet.some(h => h === '08:00-12:00')) periodos.push('MANHA');
+  if (horasSet.some(h => h === '13:00-18:00')) periodos.push('TARDE');
+  if (horasSet.some(h => h === '18:00-22:00')) periodos.push('NOITE');
+
+  return { dias, periodos };
+};
+
+// Converte estado da UI para payload da API
+const stateToApi = (dias: number[], periodos: string[]): any[] => {
+  const disponibilidades: any[] = [];
+  for (const dia of dias) {
+    for (const periodoKey of periodos) {
+      const periodo = PERIODOS.find(p => p.key === periodoKey);
+      if (periodo) {
+        disponibilidades.push({
+          diaSemana: dia,
+          horaInicio: periodo.horaInicio,
+          horaFim: periodo.horaFim
+        });
+      }
+    }
+  }
+  return disponibilidades;
+};
 
 export function GradeHorariosScreen() {
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
 
-  // Estado local para simular a grade salva
-  const [diasSelecionados, setDiasSelecionados] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [periodosSelecionados, setPeriodosSelecionados] = useState<string[]>(['MANHA', 'TARDE']);
+  const [diasSelecionados, setDiasSelecionados] = useState<number[]>([]);
+  const [periodosSelecionados, setPeriodosSelecionados] = useState<string[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Buscar grade atual da API
+  const { data: gradeAtual, isLoading, isError, refetch } = useQuery({
+    queryKey: ['minha-grade-horarios'],
+    queryFn: async () => {
+      const { data } = await api.get('/me/grade-horarios');
+      return data;
+    }
+  });
+
+  // Inicializar estado a partir dos dados da API
+  useEffect(() => {
+    if (gradeAtual && Array.isArray(gradeAtual)) {
+      const { dias, periodos } = apiToState(gradeAtual);
+      setDiasSelecionados(dias);
+      setPeriodosSelecionados(periodos);
+      setHasChanges(false);
+    }
+  }, [gradeAtual]);
+
+  // Mutation para salvar
+  const saveMutation = useMutation({
+    mutationFn: async (payload: any[]) => {
+      const { data } = await api.put('/me/grade-horarios', { disponibilidades: payload });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['minha-grade-horarios'] });
+      setHasChanges(false);
+      Alert.alert(
+        'Grade Salva!',
+        'Sua disponibilidade semanal foi atualizada com sucesso.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.error || 'Erro ao salvar grade de horários.';
+      Alert.alert('Erro', msg);
+    }
+  });
 
   const toggleDia = (key: number) => {
+    setHasChanges(true);
     if (diasSelecionados.includes(key)) {
       setDiasSelecionados(diasSelecionados.filter(d => d !== key));
     } else {
@@ -35,6 +111,7 @@ export function GradeHorariosScreen() {
   };
 
   const togglePeriodo = (key: string) => {
+    setHasChanges(true);
     if (periodosSelecionados.includes(key)) {
       setPeriodosSelecionados(periodosSelecionados.filter(p => p !== key));
     } else {
@@ -50,12 +127,48 @@ export function GradeHorariosScreen() {
       return Alert.alert('Erro', 'Selecione ao menos um período de disponibilidade.');
     }
 
-    Alert.alert(
-      'Grade Salva!',
-      'Sua disponibilidade semanal foi atualizada com sucesso no sistema clínico.',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+    const payload = stateToApi(diasSelecionados, periodosSelecionados);
+    saveMutation.mutate(payload);
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.textHeader} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Minha Grade de Horários</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loaderText}>Carregando grade...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.textHeader} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Minha Grade de Horários</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.loaderContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text style={[styles.loaderText, { color: '#EF4444' }]}>Erro ao carregar grade.</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}>
+            <Text style={styles.retryBtnText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -143,10 +256,31 @@ export function GradeHorariosScreen() {
           </View>
         </View>
 
+        {/* ─── Resumo ─────────────────────────────── */}
+        {diasSelecionados.length > 0 && periodosSelecionados.length > 0 && (
+          <View style={styles.resumeCard}>
+            <Text style={styles.resumeTitle}>📊 Resumo da Grade</Text>
+            <Text style={styles.resumeText}>
+              {diasSelecionados.length} dia(s) × {periodosSelecionados.length} período(s) = {diasSelecionados.length * periodosSelecionados.length} bloco(s) de disponibilidade
+            </Text>
+          </View>
+        )}
+
         {/* ─── Botão Salvar ─────────────────────────────── */}
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.9}>
-          <Ionicons name="save-outline" size={20} color="#FFF" />
-          <Text style={styles.saveBtnText}>Salvar Configuração</Text>
+        <TouchableOpacity 
+          style={[styles.saveBtn, (!hasChanges || saveMutation.isPending) && styles.saveBtnDisabled]} 
+          onPress={handleSave} 
+          activeOpacity={0.9}
+          disabled={!hasChanges || saveMutation.isPending}
+        >
+          {saveMutation.isPending ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <Ionicons name="save-outline" size={20} color="#FFF" />
+          )}
+          <Text style={styles.saveBtnText}>
+            {saveMutation.isPending ? 'Salvando...' : hasChanges ? 'Salvar Configuração' : 'Sem alterações'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -180,6 +314,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1E293B',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loaderText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  retryBtn: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
   container: {
     padding: 16,
@@ -281,6 +437,24 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
   },
+  resumeCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  resumeTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E40AF',
+    marginBottom: 4,
+  },
+  resumeText: {
+    fontSize: 13,
+    color: '#1E40AF',
+  },
   saveBtn: {
     backgroundColor: colors.primary,
     borderRadius: 14,
@@ -291,6 +465,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
     ...shadows.btn,
+  },
+  saveBtnDisabled: {
+    opacity: 0.5,
   },
   saveBtnText: {
     color: '#FFF',

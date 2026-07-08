@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 
-const prisma = new PrismaClient();
 
 export const getSalas = async (req: Request, res: Response) => {
   try {
@@ -137,10 +136,30 @@ export const deleteSala = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores podem excluir salas.' });
     }
     const { salaId } = req.params;
+    const id = parseInt(salaId as string);
+
+    // Verifica se há sessões futuras ativas nesta sala
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const sessoesAtivas = await prisma.sessao.count({
+      where: {
+        salaId: id,
+        dataSessao: { gte: hoje },
+        status: { notIn: ['CANCELADA', 'CONCLUIDA', 'FALTA'] }
+      }
+    });
+
+    if (sessoesAtivas > 0) {
+      return res.status(409).json({
+        error: `Não é possível excluir esta sala. Existem ${sessoesAtivas} sessão(ões) agendada(s) para datas futuras. Cancele os agendamentos antes de excluir.`,
+        code: 'SALA_COM_AGENDAMENTOS_ATIVOS'
+      });
+    }
 
     // Soft delete: set ativa = false
     await prisma.sala.update({
-      where: { id: parseInt(salaId as string) },
+      where: { id },
       data: { ativa: false }
     });
 

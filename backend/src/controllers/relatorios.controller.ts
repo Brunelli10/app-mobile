@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 
-const prisma = new PrismaClient();
 
 export const getRelatorioSessoes = async (req: Request, res: Response) => {
   try {
@@ -10,7 +9,7 @@ export const getRelatorioSessoes = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem emitir relatórios.' });
     }
 
-    const { dataInicio, dataFim, status, salaId } = req.query;
+    const { dataInicio, dataFim, status, salaId, estagiarioId } = req.query;
 
     const whereClause: any = {};
 
@@ -30,6 +29,10 @@ export const getRelatorioSessoes = async (req: Request, res: Response) => {
 
     if (salaId) {
       whereClause.salaId = parseInt(salaId as string);
+    }
+
+    if (estagiarioId) {
+      whereClause.agendamento = { estagiarioId: parseInt(estagiarioId as string) };
     }
 
     const sessoes = await prisma.sessao.findMany({
@@ -180,5 +183,130 @@ export const getRelatorioPacientes = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Erro ao gerar relatório de pacientes:', error);
     res.status(500).json({ error: 'Erro ao gerar relatório de pacientes.' });
+  }
+};
+
+
+// ─── Relatório de Supervisão ──────────────────────────────────────────────────
+export const getRelatorioSupervisao = async (req: Request, res: Response) => {
+  try {
+    const solicitantePerfil = req.user!.perfil;
+    if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
+      return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem emitir relatórios.' });
+    }
+
+    const { dataInicio, dataFim, tipo } = req.query;
+    // tipo: 'sem_feedback' | 'feedbacks_por_estagiario' | 'presenca_estagiario'
+
+    const whereDate: any = {};
+    if (dataInicio || dataFim) {
+      whereDate.dataSessao = {};
+      if (dataInicio) whereDate.dataSessao.gte = new Date(`${dataInicio}T00:00:00`);
+      if (dataFim) whereDate.dataSessao.lte = new Date(`${dataFim}T23:59:59`);
+    }
+
+    if (tipo === 'sem_feedback') {
+      // Sessões sem feedback do supervisor
+      const sessoes = await prisma.sessao.findMany({
+        where: {
+          ...whereDate,
+          supervisorNota: null,
+          status: { in: ['REALIZADA', 'CONCLUIDA'] }
+        },
+        include: {
+          agendamento: {
+            include: {
+              estagiario: { include: { usuario: { select: { nome: true } } } },
+              sala: { select: { nome: true } },
+              pacientes: { include: { paciente: { select: { nome: true } } } }
+            }
+          }
+        },
+        orderBy: { dataSessao: 'desc' },
+        take: 200
+      });
+
+      const formatted = sessoes.map(s => ({
+        id: s.id,
+        data: s.dataSessao.toISOString().split('T')[0],
+        horario: s.horarioInicio,
+        estagiario: s.agendamento.estagiario.usuario.nome,
+        sala: s.agendamento.sala.nome,
+        pacientes: s.agendamento.pacientes.map(p => p.paciente.nome).join(', '),
+        status: s.status,
+        notas: s.notas || ''
+      }));
+
+      return res.json(formatted);
+    }
+
+    if (tipo === 'feedbacks_por_estagiario') {
+      // Contagem de feedbacks dados por estagiário
+      const estagiarios = await prisma.estagiario.findMany({
+        where: { ativo: true },
+        include: { usuario: { select: { nome: true } } }
+      });
+
+      const report = [];
+      for (const est of estagiarios) {
+        const totalSessoes = await prisma.sessao.count({
+          where: { ...whereDate, agendamento: { estagiarioId: est.id } }
+        });
+        const comFeedback = await prisma.sessao.count({
+          where: { ...whereDate, agendamento: { estagiarioId: est.id }, supervisorNota: { not: null } }
+        });
+        const semFeedback = totalSessoes - comFeedback;
+        const percentual = totalSessoes > 0 ? Math.round((comFeedback / totalSessoes) * 100) : 0;
+
+        report.push({
+          estagiario: est.usuario.nome,
+          matricula: est.matricula,
+          totalSessoes,
+          comFeedback,
+          semFeedback,
+          percentualRevisado: `${percentual}%`
+        });
+      }
+
+      return res.json(report.sort((a, b) => b.semFeedback - a.semFeedback));
+    }
+
+    if (tipo === 'presenca_estagiario') {
+      // Presença e faltas por estagiário no período
+      const estagiarios = await prisma.estagiario.findMany({
+        where: { ativo: true },
+        include: { usuario: { select: { nome: true } } }
+      });
+
+      const report = [];
+      for (const est of estagiarios) {
+        const sessoes = await prisma.sessao.findMany({
+          where: { ...whereDate, agendamento: { estagiarioId: est.id } }
+        });
+
+        const realizadas = sessoes.filter(s => s.status === 'CONCLUIDA' || s.status === 'REALIZADA').length;
+        const faltas = sessoes.filter(s => s.status === 'FALTA').length;
+        const canceladas = sessoes.filter(s => s.status === 'CANCELADA').length;
+        const total = sessoes.length;
+        const taxaPresenca = (realizadas + faltas) > 0 ? Math.round((realizadas / (realizadas + faltas)) * 100) : 100;
+
+        report.push({
+          estagiario: est.usuario.nome,
+          matricula: est.matricula,
+          total,
+          realizadas,
+          faltas,
+          canceladas,
+          taxaPresenca: `${taxaPresenca}%`
+        });
+      }
+
+      return res.json(report.sort((a, b) => a.taxaPresenca.localeCompare(b.taxaPresenca)));
+    }
+
+    return res.status(400).json({ error: 'Parâmetro "tipo" é obrigatório. Valores: sem_feedback, feedbacks_por_estagiario, presenca_estagiario.' });
+  } catch (error) {
+    console.error('Erro ao gerar relatório de supervisão:', error);
+    res.status(500).json({ error: 'Erro ao gerar relatório de supervisão.' });
   }
 };

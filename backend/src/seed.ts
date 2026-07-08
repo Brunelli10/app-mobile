@@ -1,8 +1,7 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './utils/prisma';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
 
 async function main() {
   // ─── 1. Conta ROOT ──────────────────────────────────────────────────────────
@@ -103,7 +102,7 @@ async function main() {
             dataNascimento: new Date('1995-10-25'),
             cpf: '12345678901',
             telefone: '11987654321',
-            tipoAtendimento: 'INDIVIDUAL',
+            tipoAtendimento: 'ADULTO',
             ativo: true
           }
         }

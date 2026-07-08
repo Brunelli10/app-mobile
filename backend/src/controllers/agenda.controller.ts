@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 
-const prisma = new PrismaClient();
 
 export const getMinhaAgenda = async (req: Request, res: Response) => {
   try {
@@ -34,6 +33,7 @@ export const getMinhaAgenda = async (req: Request, res: Response) => {
         return res.json([]);
       }
       whereClause = {
+        status: { not: 'CANCELADA' },
         agendamento: {
           pacientes: { some: { pacienteId: paciente.id } }
         }

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, ScrollView, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../config/theme';
 import { Button } from '../../components/Button';
@@ -61,7 +61,7 @@ export function GestaoAcessosScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Buscar lista de usuários
-  const { data: usuarios, isLoading } = useQuery({
+  const { data: usuarios, isLoading, refetch } = useQuery({
     queryKey: ['usuarios-lista', search, selectedStatus, selectedPerfil],
     queryFn: async () => {
       const params: any = {};
@@ -71,6 +71,12 @@ export function GestaoAcessosScreen() {
       return (await api.get('/usuarios', { params })).data;
     }
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   const handleAprovar = async (userId: number, nome: string) => {
     try {
@@ -267,7 +273,7 @@ export function GestaoAcessosScreen() {
       <View style={[styles.filterSection, { borderBottomWidth: 1, borderColor: '#EAEEF3', paddingBottom: 12 }]}>
         <Text style={styles.filterLabel}>Função:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {['ALL', 'PACIENTE', 'ESTAGIARIO', 'SUPERVISOR', 'GESTOR'].map(pf => (
+          {['ALL', 'PACIENTE', 'ESTAGIARIO', 'SUPERVISOR', 'GESTOR', 'ROOT'].map(pf => (
             <TouchableOpacity
               key={pf}
               style={[styles.filterChip, selectedPerfil === pf && styles.filterChipActive]}

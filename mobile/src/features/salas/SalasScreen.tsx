@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
 import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNotificacoesStore } from '../../store/useNotificacoesStore';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
@@ -51,8 +51,8 @@ const TIPO_COLORS: Record<string, string> = {
 };
 
 export function SalasScreen() {
-  const { data: salas, isLoading } = useQuery({ queryKey: ['salas'], queryFn: async () => (await api.get('/salas')).data });
-  const { data: agenda } = useQuery({
+  const { data: salas, isLoading, refetch: refetchSalas } = useQuery({ queryKey: ['salas'], queryFn: async () => (await api.get('/salas')).data });
+  const { data: agenda, refetch: refetchAgenda } = useQuery({
     queryKey: ['meus-agendamentos'],
     queryFn: async () => (await api.get('/meus-agendamentos')).data
   });
@@ -102,6 +102,13 @@ export function SalasScreen() {
   const [isCreating, setIsCreating] = useState(false);
 
   const isGestorOrRoot = user?.perfil === 'GESTOR' || user?.perfil === 'ROOT';
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchSalas();
+      refetchAgenda();
+    }, [refetchSalas, refetchAgenda])
+  );
 
   const handleCreateSala = async () => {
     if (!newSalaNome || !newSalaCapacidade) {
@@ -300,7 +307,7 @@ export function SalasScreen() {
                 key={sala.id}
                 style={styles.roomCard}
                 activeOpacity={0.75}
-                onPress={() => navigation.navigate('SalaDetails', { salaId: sala.id, salaName: sala.nome })}
+                onPress={() => navigation.navigate('SalaDetails', { salaId: sala.id, salaName: sala.nome, salaTipo: sala.tipo })}
               >
                 {/* Faixa colorida lateral por tipo */}
                 <View style={[styles.roomAccent, { backgroundColor: tipoColor }]} />

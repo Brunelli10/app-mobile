@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 
-const prisma = new PrismaClient();
 
 /** GET /api/notificacoes — lista as notificações do usuário logado */
 export const getNotificacoes = async (req: Request, res: Response) => {

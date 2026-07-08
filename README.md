@@ -68,6 +68,10 @@ npm start
 Você pode usar a conta administrativa (ROOT) injetada no banco por padrão:
 - **Email:** `root@clinica.com`
 - **Senha:** `root123`
-
+estagiario 
+estagiario@clinica.com
+senha123
+paciente@clinica.com
+senha123
 ---
 *Desenvolvido com 🩵 para a Gestão Clínica Moderna.*

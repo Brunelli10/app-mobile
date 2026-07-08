@@ -12,7 +12,9 @@ export const criarAgendamentoSchema = z.object({
   horarioInicio: horarioSchema,
   weeksCount: z.number().int().min(1).max(10).optional().default(1),
   pacienteId: z.number().int().positive({ message: 'pacienteId deve ser um número positivo' }),
-  dataInicio: dateStringSchema
+  dataInicio: dateStringSchema,
+  estagiarioId: z.number().int().positive({ message: 'estagiarioId deve ser um número positivo' }).optional(),
+  skipConflicts: z.boolean().optional()
 });
 
 // ─── Pacientes ────────────────────────────────────────────────────────────────

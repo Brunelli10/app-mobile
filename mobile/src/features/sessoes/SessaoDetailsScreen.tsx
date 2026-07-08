@@ -12,10 +12,11 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const STATUS_CONFIG = {
+  AGENDADA:  { cor: colors.primary, bg: '#EFF6FF', label: 'Agendada' },
   CONCLUIDA: { cor: '#10B981', bg: '#DCFCE7', label: 'Concluída' },
   FALTA:     { cor: '#EF4444', bg: '#FEE2E2', label: 'Falta' },
   CANCELADA: { cor: '#94A3B8', bg: '#F1F5F9', label: 'Cancelada' },
-  REALIZADA: { cor: colors.primary, bg: '#EFF6FF', label: 'Agendada' },
+  REALIZADA: { cor: '#10B981', bg: '#DCFCE7', label: 'Realizada' },
 };
 
 export function SessaoDetailsScreen() {
@@ -31,7 +32,7 @@ export function SessaoDetailsScreen() {
   const isPaciente = user?.perfil === 'PACIENTE';
 
   // Estados locais
-  const [statusSessao, setStatusSessao] = useState<string>(sessao?.status || 'REALIZADA');
+  const [statusSessao, setStatusSessao] = useState<string>(sessao?.status || 'AGENDADA');
   const [evolucaoClinica, setEvolucaoClinica] = useState<string>(sessao?.notas || '');
   const [estagiarioSubstitutoId, setEstagiarioSubstitutoId] = useState<number | null>(sessao?.estagiarioSubstitutoId || null);
   const [estagiarioSubstitutoNome, setEstagiarioSubstitutoNome] = useState<string | null>(sessao?.estagiarioSubstitutoNome || null);
@@ -60,7 +61,7 @@ export function SessaoDetailsScreen() {
     return idade < 18 && !p.responsavelNome;
   });
 
-  const cfg = STATUS_CONFIG[statusSessao as keyof typeof STATUS_CONFIG] || STATUS_CONFIG['REALIZADA'];
+  const cfg = STATUS_CONFIG[statusSessao as keyof typeof STATUS_CONFIG] || STATUS_CONFIG['AGENDADA'];
   const jaEncerrada = statusSessao === 'CONCLUIDA' || statusSessao === 'FALTA' || statusSessao === 'CANCELADA';
 
   // Handler de check-in de presença/falta

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../config/theme';
 import { Button } from '../../components/Button';
 import { api } from '../../api/apiClient';
+import { useQuery } from '@tanstack/react-query';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -13,6 +14,8 @@ const REPORT_TYPES = [
   { id: 'sessoes', title: 'Sessões e Atendimentos', desc: 'Sessões por período, sala e status', icon: 'calendar-outline' },
   { id: 'estagiarios', title: 'Desempenho de Estagiários', desc: 'Frequência, faltas e carga horária', icon: 'school-outline' },
   { id: 'pacientes', title: 'Cadastro de Pacientes', desc: 'Lista de pacientes, dados de contato e responsável', icon: 'people-outline' },
+  { id: 'supervisao_sem_feedback', title: 'Sessões Sem Supervisão', desc: 'Sessões realizadas sem feedback do supervisor', icon: 'alert-circle-outline' },
+  { id: 'supervisao_feedbacks', title: 'Feedbacks por Estagiário', desc: 'Cobertura de supervisão por estagiário', icon: 'ribbon-outline' },
 ];
 
 export function RelatoriosScreen() {
@@ -20,6 +23,8 @@ export function RelatoriosScreen() {
   
   const [selectedReport, setSelectedReport] = useState('sessoes');
   const [loading, setLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<any[] | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Filtros
   const [dataInicio, setDataInicio] = useState(() => {
@@ -31,6 +36,18 @@ export function RelatoriosScreen() {
   const [statusSessao, setStatusSessao] = useState('ALL');
   const [tipoAtendimento, setTipoAtendimento] = useState('ALL');
   const [statusPaciente, setStatusPaciente] = useState('ALL');
+  const [filtroEstagiarioId, setFiltroEstagiarioId] = useState('ALL');
+  const [filtroSalaId, setFiltroSalaId] = useState('ALL');
+
+  // Queries auxiliares para dropdowns de filtro
+  const { data: estagiarios } = useQuery({
+    queryKey: ['estagiarios-relatorio'],
+    queryFn: async () => (await api.get('/sessoes/estagiarios')).data
+  });
+  const { data: salas } = useQuery({
+    queryKey: ['salas-relatorio'],
+    queryFn: async () => (await api.get('/salas')).data
+  });
 
   const fetchReportData = async () => {
     try {
@@ -42,6 +59,8 @@ export function RelatoriosScreen() {
         params.dataInicio = dataInicio;
         params.dataFim = dataFim;
         if (statusSessao !== 'ALL') params.status = statusSessao;
+        if (filtroEstagiarioId !== 'ALL') params.estagiarioId = filtroEstagiarioId;
+        if (filtroSalaId !== 'ALL') params.salaId = filtroSalaId;
       } else if (selectedReport === 'estagiarios') {
         endpoint = '/relatorios/estagiarios';
         params.dataInicio = dataInicio;
@@ -50,6 +69,16 @@ export function RelatoriosScreen() {
         endpoint = '/relatorios/pacientes';
         if (tipoAtendimento !== 'ALL') params.tipoAtendimento = tipoAtendimento;
         if (statusPaciente !== 'ALL') params.status = statusPaciente;
+      } else if (selectedReport === 'supervisao_sem_feedback') {
+        endpoint = '/relatorios/supervisao';
+        params.tipo = 'sem_feedback';
+        params.dataInicio = dataInicio;
+        params.dataFim = dataFim;
+      } else if (selectedReport === 'supervisao_feedbacks') {
+        endpoint = '/relatorios/supervisao';
+        params.tipo = 'feedbacks_por_estagiario';
+        params.dataInicio = dataInicio;
+        params.dataFim = dataFim;
       }
 
       const response = await api.get(endpoint, { params });
@@ -59,6 +88,18 @@ export function RelatoriosScreen() {
       Alert.alert('Erro', e.response?.data?.error || 'Erro ao carregar dados do relatório.');
       return null;
     }
+  };
+
+  // Preview dos dados antes de exportar
+  const handlePreview = async () => {
+    setLoading(true);
+    const data = await fetchReportData();
+    setLoading(false);
+    if (!data || data.length === 0) {
+      return Alert.alert('Aviso', 'Nenhum dado encontrado com os filtros aplicados.');
+    }
+    setPreviewData(data);
+    setShowPreview(true);
   };
 
   // ─── GERADOR DE EXCEL (CSV FORMATADO) ──────────────────────────────────────
@@ -414,28 +455,78 @@ export function RelatoriosScreen() {
 
           {/* Filtros específicos de Sessões */}
           {selectedReport === 'sessoes' && (
-            <View style={styles.filterRow}>
-              <Text style={styles.fieldLabel}>Status das Sessões</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-                {[
-                  { id: 'ALL', name: 'Todas' },
-                  { id: 'CONCLUIDA', name: 'Realizadas' },
-                  { id: 'FALTA', name: 'Faltas' },
-                  { id: 'CANCELADA', name: 'Canceladas' }
-                ].map(opt => {
-                  const active = statusSessao === opt.id;
-                  return (
-                    <TouchableOpacity
-                      key={opt.id}
-                      style={[styles.chip, active && styles.chipActive]}
-                      onPress={() => setStatusSessao(opt.id)}
-                    >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.name}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
+            <>
+              <View style={styles.filterRow}>
+                <Text style={styles.fieldLabel}>Status das Sessões</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                  {[
+                    { id: 'ALL', name: 'Todas' },
+                    { id: 'CONCLUIDA', name: 'Realizadas' },
+                    { id: 'FALTA', name: 'Faltas' },
+                    { id: 'CANCELADA', name: 'Canceladas' }
+                  ].map(opt => {
+                    const active = statusSessao === opt.id;
+                    return (
+                      <TouchableOpacity
+                        key={opt.id}
+                        style={[styles.chip, active && styles.chipActive]}
+                        onPress={() => setStatusSessao(opt.id)}
+                      >
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={[styles.filterRow, { marginTop: 14 }]}>
+                <Text style={styles.fieldLabel}>Estagiário</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                  <TouchableOpacity
+                    style={[styles.chip, filtroEstagiarioId === 'ALL' && styles.chipActive]}
+                    onPress={() => setFiltroEstagiarioId('ALL')}
+                  >
+                    <Text style={[styles.chipText, filtroEstagiarioId === 'ALL' && styles.chipTextActive]}>Todos</Text>
+                  </TouchableOpacity>
+                  {(estagiarios || []).map((e: any) => {
+                    const active = filtroEstagiarioId === String(e.id);
+                    return (
+                      <TouchableOpacity
+                        key={e.id}
+                        style={[styles.chip, active && styles.chipActive]}
+                        onPress={() => setFiltroEstagiarioId(String(e.id))}
+                      >
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{e.nome.split(' ')[0]}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={[styles.filterRow, { marginTop: 14 }]}>
+                <Text style={styles.fieldLabel}>Sala</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+                  <TouchableOpacity
+                    style={[styles.chip, filtroSalaId === 'ALL' && styles.chipActive]}
+                    onPress={() => setFiltroSalaId('ALL')}
+                  >
+                    <Text style={[styles.chipText, filtroSalaId === 'ALL' && styles.chipTextActive]}>Todas</Text>
+                  </TouchableOpacity>
+                  {(salas || []).filter((s: any) => s.ativa).map((s: any) => {
+                    const active = filtroSalaId === String(s.id);
+                    return (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[styles.chip, active && styles.chipActive]}
+                        onPress={() => setFiltroSalaId(String(s.id))}
+                      >
+                        <Text style={[styles.chipText, active && styles.chipTextActive]}>{s.nome}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </>
           )}
 
           {/* Filtros específicos de Pacientes */}
@@ -496,6 +587,11 @@ export function RelatoriosScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         ) : (
           <View style={styles.buttonGroup}>
+            <TouchableOpacity style={[styles.excelButton, { backgroundColor: '#6366F1' }]} onPress={handlePreview}>
+              <Ionicons name="eye-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.buttonText}>Preview dos Dados</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.excelButton} onPress={handleExportExcel}>
               <Ionicons name="document-text-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={styles.buttonText}>Exportar Excel (CSV)</Text>

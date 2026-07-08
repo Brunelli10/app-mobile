@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { criarNotificacao, notificarGestores } from '../utils/notificacoes.helper';
 
-const prisma = new PrismaClient();
 
 export const getUsuarios = async (req: Request, res: Response) => {
   try {
@@ -17,8 +16,8 @@ export const getUsuarios = async (req: Request, res: Response) => {
 
     if (search) {
       whereClause.OR = [
-        { nome: { contains: search as string } },
-        { email: { contains: search as string } }
+        { nome: { contains: search as string, mode: 'insensitive' } },
+        { email: { contains: search as string, mode: 'insensitive' } }
       ];
     }
 

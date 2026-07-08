@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { notificarGestores, notificarEstagiario, notificarPacientesDoAgendamento } from '../utils/notificacoes.helper';
 
-const prisma = new PrismaClient();
 
 export const createAgendamento = async (req: Request, res: Response) => {
   try {
@@ -37,6 +36,59 @@ export const createAgendamento = async (req: Request, res: Response) => {
     const numSemanas = parseInt(weeksCount) || 1;
     const idsSala = parseInt(salaId);
     const idPaciente = parseInt(pacienteId);
+
+    // ─── Validação de compatibilidade Sala × Tipo de Paciente ────────────────────
+    const sala = await prisma.sala.findUnique({ where: { id: idsSala } });
+    if (!sala) {
+      return res.status(404).json({ error: 'Sala não encontrada.' });
+    }
+
+    const paciente = await prisma.paciente.findUnique({ where: { id: idPaciente } });
+    if (!paciente) {
+      return res.status(404).json({ error: 'Paciente não encontrado.' });
+    }
+
+    // Normaliza tipoAtendimento legado
+    const tipoPaciente = paciente.tipoAtendimento === 'INDIVIDUAL' ? 'ADULTO' : paciente.tipoAtendimento;
+
+    if (sala.tipo === 'LUDICA' && tipoPaciente !== 'CRIANCA') {
+      return res.status(400).json({ 
+        error: 'Esta sala é lúdica/infantil. Apenas pacientes do tipo Criança podem ser agendados nela.',
+        code: 'SALA_INCOMPATIVEL'
+      });
+    }
+
+    if (tipoPaciente === 'CASAL' && sala.tipo === 'LUDICA') {
+      return res.status(400).json({ 
+        error: 'Pacientes do tipo Casal não podem ser atendidos em salas lúdicas.',
+        code: 'SALA_INCOMPATIVEL'
+      });
+    }
+
+    // ─── Validação de Disponibilidade do Estagiário (Grade de Horários) ────────
+    const diaSemanaAgendamento = dataSessaoInicial.getDay();
+    const disponibilidades = await prisma.disponibilidadeEstagiario.findMany({
+      where: { 
+        estagiarioId: estagiarioToUse.id, 
+        ativo: true,
+        diaSemana: diaSemanaAgendamento
+      }
+    });
+
+    // Só valida se o estagiário TEM grade cadastrada (se não tem, permite qualquer horário)
+    if (disponibilidades.length > 0) {
+      const horarioSolicitado = horarioInicio;
+      const horaCoberta = disponibilidades.some((d: any) => 
+        horarioSolicitado >= d.horaInicio && horarioSolicitado < d.horaFim
+      );
+      if (!horaCoberta) {
+        const diasNomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        return res.status(400).json({ 
+          error: `O estagiário não possui disponibilidade ${diasNomes[diaSemanaAgendamento]} às ${horarioSolicitado}. Verifique a grade de horários.`,
+          code: 'FORA_DA_GRADE'
+        });
+      }
+    }
 
     // ─── Validação contra as Configurações da Clínica ─────────────────────────
     const config = await prisma.configuracao.findFirst();
@@ -176,7 +228,7 @@ export const createAgendamento = async (req: Request, res: Response) => {
             salaId: idsSala,
             horarioInicio: horarioInicio,
             dataSessao: proximaData,
-            status: 'REALIZADA', 
+            status: 'AGENDADA', 
             registradoPorId: userId,
             notas: `[Semana ${i+1}/${availableWeeks.length}]`
         });
@@ -188,21 +240,21 @@ export const createAgendamento = async (req: Request, res: Response) => {
     res.status(201).json({ message: 'Agendamento salvo com sucesso!', agendamento });
 
     // ─── Notificações ───────────────────────────────────────────────────────────
-    const sala = await prisma.sala.findUnique({ where: { id: idsSala }, select: { nome: true } });
+    const salaNotif = await prisma.sala.findUnique({ where: { id: idsSala }, select: { nome: true } });
     const estagiarioUser = await prisma.usuario.findUnique({ where: { id: estagiarioToUse.usuarioId }, select: { nome: true } });
     const dataFormatada = dataSessaoInicial.toLocaleDateString('pt-BR');
     
     // Notifica Gestores sobre a criação (se não foi ele mesmo que criou)
     if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
-      const msgGestor = `${estagiarioUser?.nome || 'Estagiário'} criou ${numSemanas > 1 ? `${numSemanas} sessões` : 'uma sessão'} na ${sala?.nome || 'sala'} a partir de ${dataFormatada} às ${horarioInicio}.`;
+      const msgGestor = `${estagiarioUser?.nome || 'Estagiário'} criou ${numSemanas > 1 ? `${numSemanas} sessões` : 'uma sessão'} na ${salaNotif?.nome || 'sala'} a partir de ${dataFormatada} às ${horarioInicio}.`;
       notificarGestores('AGENDAMENTO', '📅 Novo Agendamento', msgGestor);
     }
     
     // Notifica o Estagiário (se foi o gestor que criou pra ele)
     if (userPerfil === 'GESTOR' || userPerfil === 'ROOT') {
-      notificarEstagiario(estagiarioToUse.id, 'AGENDAMENTO', '📅 Novo Agendamento (Gestão)', `A coordenação criou um agendamento para você na ${sala?.nome || 'sala'} a partir de ${dataFormatada} às ${horarioInicio}.`);
+      notificarEstagiario(estagiarioToUse.id, 'AGENDAMENTO', '📅 Novo Agendamento (Gestão)', `A coordenação criou um agendamento para você na ${salaNotif?.nome || 'sala'} a partir de ${dataFormatada} às ${horarioInicio}.`);
     } else {
-      notificarEstagiario(estagiarioToUse.id, 'AGENDAMENTO', '📅 Agendamento confirmado', `Seu agendamento na ${sala?.nome || 'sala'} foi confirmado a partir de ${dataFormatada} às ${horarioInicio}.`);
+      notificarEstagiario(estagiarioToUse.id, 'AGENDAMENTO', '📅 Agendamento confirmado', `Seu agendamento na ${salaNotif?.nome || 'sala'} foi confirmado a partir de ${dataFormatada} às ${horarioInicio}.`);
     }
   } catch (error: any) {
     console.error("ERRO DO MOTOR DE AGENDAMENTO", error);

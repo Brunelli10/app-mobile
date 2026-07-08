@@ -4,7 +4,7 @@ import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -40,7 +40,8 @@ const getWeekOf = (referenceDate: Date): { label: string; fullString: string; is
 };
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; bg: string }> = {
-  REALIZADA:  { color: colors.primary, label: 'Agendada',  bg: '#EFF6FF' },
+  AGENDADA:   { color: colors.primary, label: 'Agendada',  bg: '#EFF6FF' },
+  REALIZADA:  { color: '#10B981',      label: 'Realizada', bg: '#DCFCE7' },
   CONCLUIDA:  { color: '#10B981',      label: 'Concluída', bg: '#DCFCE7' },
   FALTA:      { color: '#EF4444',      label: 'Falta',     bg: '#FEE2E2' },
   CANCELADA:  { color: '#94A3B8',      label: 'Cancelada', bg: '#F1F5F9' },
@@ -78,6 +79,12 @@ export function AgendaScreen() {
     queryFn: async () => (await api.get('/meus-agendamentos')).data
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
   // Marcar datas com sessões para o calendário mensal
   const markedDates: Record<string, any> = {};
   agenda?.forEach((ag: any) => {
@@ -95,9 +102,9 @@ export function AgendaScreen() {
     const matchesDate = ag.dataRaw === selectedDate;
     let matchesStatus = true;
     if (filtroStatus === 'AGENDADA') {
-      matchesStatus = ag.status === 'REALIZADA';
+      matchesStatus = ag.status === 'AGENDADA';
     } else if (filtroStatus === 'CONCLUIDA') {
-      matchesStatus = ag.status === 'CONCLUIDA';
+      matchesStatus = ag.status === 'CONCLUIDA' || ag.status === 'REALIZADA';
     } else if (filtroStatus === 'FALTA') {
       matchesStatus = ag.status === 'FALTA' || ag.status === 'CANCELADA';
     }
@@ -239,7 +246,7 @@ export function AgendaScreen() {
             onRefresh={refetch}
             refreshing={isLoading}
             renderItem={({ item }) => {
-              const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG['REALIZADA'];
+              const statusCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG['AGENDADA'];
               const pacientesNomes = item.pacientes?.map((p: any) => p.nome).join(', ') || '—';
               const showPaciente = user?.perfil !== 'PACIENTE'; // Paciente já sabe quem é ele
 

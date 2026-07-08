@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 
-const prisma = new PrismaClient();
 
 export const getDashboardMetrics = async (req: Request, res: Response) => {
   try {
@@ -290,8 +289,55 @@ export const getDashboardMetrics = async (req: Request, res: Response) => {
       nome: e.usuario.nome
     }));
 
+    // 9. Dados de supervisão
+    const sessoesSemFeedback = await prisma.sessao.count({
+      where: {
+        ...whereData,
+        supervisorNota: null,
+        status: { in: ['REALIZADA', 'CONCLUIDA'] }
+      }
+    });
+    const sessoesComFeedback = await prisma.sessao.count({
+      where: {
+        ...whereData,
+        supervisorNota: { not: null }
+      }
+    });
+
+    // 10. Alertas operacionais
+    const alertas: { tipo: string; mensagem: string; urgencia: 'alta' | 'media' | 'baixa' }[] = [];
+    
+    if (pacientesPendentes > 0) {
+      alertas.push({ tipo: 'PENDENTES', mensagem: `${pacientesPendentes} conta(s) aguardando aprovação`, urgencia: 'media' });
+    }
+    if (sessoesSemFeedback > 5) {
+      alertas.push({ tipo: 'SUPERVISAO', mensagem: `${sessoesSemFeedback} sessões sem feedback do supervisor`, urgencia: 'alta' });
+    }
+    
+    // Faltas consecutivas (alerta quando >= 2 no período)
+    const sessoesComFaltasConsecutivas = await prisma.sessao.count({
+      where: { ...whereData, status: 'FALTA' }
+    });
+    if (sessoesComFaltasConsecutivas > 3) {
+      alertas.push({ tipo: 'FALTAS', mensagem: `${sessoesComFaltasConsecutivas} faltas registradas no período`, urgencia: 'media' });
+    }
+
+    // 11. Período aplicado (para exibição no mobile)
+    let periodoAplicado = 'Todos os dados';
+    if (hojeFiltro) {
+      periodoAplicado = 'Hoje';
+    } else if (ano && mes && semana) {
+      periodoAplicado = `Semana ${semana} de ${String(mes).padStart(2, '0')}/${ano}`;
+    } else if (ano && mes) {
+      const mesesNomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      periodoAplicado = `${mesesNomes[mes - 1]} ${ano}`;
+    } else if (ano) {
+      periodoAplicado = `Ano ${ano}`;
+    }
+
     // Retornar dados completos com suporte ao legado (semana corrente)
     res.json({
+      periodoAplicado,
       metricas: {
         totalPacientes,
         totalEstagiarios,
@@ -317,6 +363,15 @@ export const getDashboardMetrics = async (req: Request, res: Response) => {
         pendentes,
         taxaPresenca
       },
+      supervisao: {
+        sessoesSemFeedback,
+        sessoesComFeedback,
+        totalSupervisadas: sessoesComFeedback,
+        percentualCobertura: (sessoesComFeedback + sessoesSemFeedback) > 0
+          ? Math.round((sessoesComFeedback / (sessoesComFeedback + sessoesSemFeedback)) * 100)
+          : 0
+      },
+      alertas,
       rankingEstagiarios,
       chartData,
       estagiarios: estagiariosDropdown

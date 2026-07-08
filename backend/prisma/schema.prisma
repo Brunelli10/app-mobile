@@ -51,6 +51,7 @@ model Estagiario {
 
   agendamentos Agendamento[]
   sessoesSubstituidas Sessao[] @relation("EstagiarioSubstituto")
+  disponibilidades DisponibilidadeEstagiario[]
 }
 
 model Paciente {
@@ -149,4 +150,18 @@ model Notificacao {
   mensagem  String
   lida      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model DisponibilidadeEstagiario {
+  id            Int      @id @default(autoincrement())
+  estagiarioId  Int
+  estagiario    Estagiario @relation(fields: [estagiarioId], references: [id])
+  diaSemana     Int      // 0=Domingo, 1=Segunda, ..., 6=Sábado
+  horaInicio    String   // "08:00"
+  horaFim       String   // "12:00"
+  ativo         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([estagiarioId, diaSemana, horaInicio])
 }

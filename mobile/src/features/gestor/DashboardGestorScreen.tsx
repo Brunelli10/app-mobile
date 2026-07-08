@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
   ActivityIndicator, TouchableOpacity, Modal, TextInput,
@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useFocusEffect } from '@react-navigation/native';
 
 const SCREEN_W = Dimensions.get('window').width;
 const CHART_W = SCREEN_W - 48;
@@ -88,10 +89,17 @@ export function DashboardGestorScreen() {
   });
 
   // Query de Contas Pendentes de Aprovação
-  const { data: pendentes } = useQuery({
+  const { data: pendentes, refetch: refetchPendentes } = useQuery({
     queryKey: ['usuarios-pendentes-gestor'],
     queryFn: async () => (await api.get('/pacientes/pendentes')).data
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+      refetchPendentes();
+    }, [refetch, refetchPendentes])
+  );
 
   const handlePromover = async () => {
     if (!usuarioIdSelecionado || !matricula || !dataInicio) {
@@ -319,15 +327,40 @@ export function DashboardGestorScreen() {
 
               <Text style={styles.sectionTitle}>Resumo da Semana</Text>
               <View style={styles.metricsGrid}>
-                <MetricCard icon="people" label="Pacientes" value={metricasOperacionais?.totalPacientes ?? '—'} color="#6366F1" />
-                <MetricCard icon="school" label="Estagiários" value={metricasOperacionais?.totalEstagiarios ?? '—'} color="#10B981" />
-                <MetricCard icon="business" label="Salas" value={metricasOperacionais?.totalSalas ?? '—'} color={colors.primary} />
+                <MetricCard icon="people" label="Pacientes" value={metricasOperacionais?.totalPacientes ?? 0} color="#6366F1" />
+                <MetricCard icon="school" label="Estagiários" value={metricasOperacionais?.totalEstagiarios ?? 0} color="#10B981" />
+                <MetricCard icon="business" label="Salas" value={metricasOperacionais?.totalSalas ?? 0} color={colors.primary} />
               </View>
               <View style={[styles.metricsGrid, { marginBottom: 20 }]}>
-                <MetricCard icon="calendar" label="Sessões" value={metricasOperacionais?.sessoesNaSemana ?? '—'} color="#F59E0B" sub="registradas" />
-                <MetricCard icon="close-circle" label="Faltas" value={metricasOperacionais?.faltasNaSemana ?? '—'} color="#EF4444" sub="no período" />
-                <MetricCard icon="trending-up" label="Presença" value={`${metricasOperacionais?.taxaPresenca ?? '—'}%`} color="#10B981" sub="média" />
+                <MetricCard icon="calendar" label="Sessões" value={metricasOperacionais?.sessoesNaSemana ?? 0} color="#F59E0B" sub="registradas" />
+                <MetricCard icon="close-circle" label="Faltas" value={metricasOperacionais?.faltasNaSemana ?? 0} color="#EF4444" sub="no período" />
+                <MetricCard icon="trending-up" label="Presença" value={`${metricasOperacionais?.taxaPresenca ?? 0}%`} color="#10B981" sub="média" />
               </View>
+
+              {/* Alertas Acionáveis */}
+              {(data?.alertas || []).length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>⚠️ Alertas</Text>
+                  {data.alertas.map((alerta: any, idx: number) => (
+                    <View key={idx} style={[styles.sessaoCard, { borderLeftWidth: 3, borderLeftColor: alerta.urgencia === 'alta' ? '#EF4444' : '#F59E0B' }]}>
+                      <Ionicons name={alerta.urgencia === 'alta' ? 'alert-circle' : 'warning'} size={20} color={alerta.urgencia === 'alta' ? '#EF4444' : '#F59E0B'} />
+                      <Text style={[styles.sessaoSala, { flex: 1, marginLeft: 8 }]}>{alerta.mensagem}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* Supervisão rápida */}
+              {data?.supervisao && (
+                <>
+                  <Text style={styles.sectionTitle}>📋 Supervisão</Text>
+                  <View style={styles.metricsGrid}>
+                    <MetricCard icon="ribbon" label="Sem Feedback" value={data.supervisao.sessoesSemFeedback} color="#F59E0B" />
+                    <MetricCard icon="checkmark-circle" label="Revisadas" value={data.supervisao.sessoesComFeedback} color="#10B981" />
+                    <MetricCard icon="pie-chart" label="Cobertura" value={`${data.supervisao.percentualCobertura}%`} color={colors.primary} />
+                  </View>
+                </>
+              )}
 
               <Text style={styles.sectionTitle}>Sessões de Hoje</Text>
               {sessoesHoje.length === 0 ? (
@@ -414,13 +447,32 @@ export function DashboardGestorScreen() {
                 <View style={styles.activeFiltersTextContainer}>
                   <Ionicons name="calendar-outline" size={16} color={colors.primary} />
                   <Text style={styles.activeFiltersText} numberOfLines={1}>
-                    {getFiltrosLabel()}
+                    {data?.periodoAplicado || getFiltrosLabel()}
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.openFilterBtn} onPress={openFiltros}>
                   <Ionicons name="funnel-outline" size={14} color="#FFF" />
                   <Text style={styles.openFilterBtnText}>Ajustar</Text>
                 </TouchableOpacity>
+              </View>
+
+              {/* Chips visuais de filtros aplicados */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 4, gap: 6, marginBottom: 12 }}>
+                {filterHoje && (
+                  <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#92400E' }}>📅 Hoje</Text>
+                  </View>
+                )}
+                {selectedAno && !filterHoje && (
+                  <View style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#1E40AF' }}>📆 {selectedAno}{selectedMes ? `/${String(selectedMes).padStart(2, '0')}` : ''}{selectedSemana ? ` Sem.${selectedSemana}` : ''}</Text>
+                  </View>
+                )}
+                {selectedEstagiario && (
+                  <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#065F46' }}>🎓 {estagiariosDropdown.find((e: any) => e.id === selectedEstagiario)?.nome?.split(' ')[0] || 'Estagiário'}</Text>
+                  </View>
+                )}
               </View>
 
               {/* Destaques de Topo: Total e Presença */}
@@ -489,6 +541,7 @@ export function DashboardGestorScreen() {
                   <View style={styles.chartEmpty}>
                     <Ionicons name="bar-chart-outline" size={36} color="#CBD5E1" />
                     <Text style={styles.chartEmptyText}>Nenhum agendamento no período selecionado</Text>
+                    <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Ajuste os filtros de período para visualizar dados</Text>
                   </View>
                 )}
               </View>

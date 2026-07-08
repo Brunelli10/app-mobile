@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import bcrypt from 'bcryptjs';
 import { cpf as cpfValidator } from 'cpf-cnpj-validator';
 
-const prisma = new PrismaClient();
 
 export interface PacienteInput {
   nome: string;
@@ -36,9 +35,14 @@ export class PacientesService {
       error.statusCode = 403;
       throw error;
     }
-    return await prisma.paciente.findMany({
+    const pacientes = await prisma.paciente.findMany({
       where: { ativo: true },
     });
+    // Normaliza tipo legado INDIVIDUAL → ADULTO
+    return pacientes.map(p => ({
+      ...p,
+      tipoAtendimento: p.tipoAtendimento === 'INDIVIDUAL' ? 'ADULTO' : p.tipoAtendimento
+    }));
   }
 
   static async getPacientePerfil(id: number, solicitantePerfil: string, solicitanteId: number) {
@@ -101,6 +105,7 @@ export class PacientesService {
 
     return {
       ...paciente,
+      tipoAtendimento: paciente.tipoAtendimento === 'INDIVIDUAL' ? 'ADULTO' : paciente.tipoAtendimento,
       sessoes,
       agendamentosAtivos,
       stats: {
