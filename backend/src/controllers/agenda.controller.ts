@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const getMinhaAgenda = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     const userDB = await prisma.usuario.findUnique({
       where: { id: userId },

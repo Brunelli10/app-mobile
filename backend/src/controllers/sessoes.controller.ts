@@ -108,7 +108,7 @@ export const updateSubstitutoSessao = async (req: Request, res: Response) => {
 // ─── PATCH /sessoes/:id/supervisor-nota ──────────────────────────────────────
 export const updateSupervisorNotaSessao = async (req: Request, res: Response) => {
   try {
-    const userPerfil = (req as any).user.perfil;
+    const userPerfil = req.user!.perfil;
     if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT' && userPerfil !== 'SUPERVISOR') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas supervisores ou gestores podem registrar feedbacks de supervisão.' });
     }

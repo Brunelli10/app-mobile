@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TextInput, TouchableOpacity, Modal, Alert, ActivityIndicator, ScrollView, Platform } from 'react-native';
-import { MaskedTextInput } from 'react-native-masked-text';
-import { colors } from '../../config/theme';
+import { TextInputMask } from 'react-native-masked-text';
+import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
@@ -305,10 +305,10 @@ export function PacientesScreen() {
                   )}
                 </View>
                 <View style={[styles.tag, {
-                  backgroundColor: item.tipoAtendimento === 'CRIANCA' ? '#FFF7ED' : (item.tipoAtendimento === 'CASAL' ? '#FDF2F8' : '#EFF6FF')
+                  backgroundColor: item.tipoAtendimento === 'CRIANCA' ? colors.tagCriancaBg : (item.tipoAtendimento === 'CASAL' ? colors.tagCasalBg : colors.infoLight)
                 }]}>
                   <Text style={[styles.tagText, {
-                    color: item.tipoAtendimento === 'CRIANCA' ? '#EA580C' : (item.tipoAtendimento === 'CASAL' ? '#DB2777' : colors.primary)
+                    color: item.tipoAtendimento === 'CRIANCA' ? colors.tagCrianca : (item.tipoAtendimento === 'CASAL' ? colors.tagCasal : colors.primary)
                   }]}>{item.tipoAtendimento}</Text>
                 </View>
               </TouchableOpacity>
@@ -336,12 +336,12 @@ export function PacientesScreen() {
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'CPF (Quem iniciou o contato) *' : 'CPF *'}
               </Text>
-              <MaskedTextInput style={styles.input} mask="999.999.999-99" placeholder="000.000.000-00" keyboardType="numeric" value={cpf} onChangeText={(text) => setCpf(text)} />
+              <TextInputMask style={styles.input} type="custom" options={{ mask: '999.999.999-99' }} placeholder="000.000.000-00" keyboardType="numeric" value={cpf} onChangeText={(text: string) => setCpf(text)} />
 
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'Telefone (Quem iniciou o contato) *' : 'Telefone *'}
               </Text>
-              <MaskedTextInput style={styles.input} mask="(99) 99999-9999" placeholder="(11) 99999-0000" keyboardType="phone-pad" value={telefone} onChangeText={(text) => setTelefone(text)} />
+              <TextInputMask style={styles.input} type="custom" options={{ mask: '(99) 99999-9999' }} placeholder="(11) 99999-0000" keyboardType="phone-pad" value={telefone} onChangeText={(text: string) => setTelefone(text)} />
 
               <Text style={styles.inputLabel}>E-mail de Acesso ao App (Opcional)</Text>
               <TextInput style={styles.input} placeholder="Preencha para gerar login..." keyboardType="email-address" autoCapitalize="none" value={emailAcesso} onChangeText={setEmailAcesso} />
@@ -349,7 +349,7 @@ export function PacientesScreen() {
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) *' : 'Data de Nascimento *'}
               </Text>
-              <MaskedTextInput style={styles.input} mask="99/99/9999" placeholder="DD/MM/AAAA" keyboardType="numeric" value={dataNascimento} onChangeText={(text) => setDataNascimento(text)} />
+              <TextInputMask style={styles.input} type="custom" options={{ mask: '99/99/9999' }} placeholder="DD/MM/AAAA" keyboardType="numeric" value={dataNascimento} onChangeText={(text: string) => setDataNascimento(text)} />
 
               {isMenor && (
                 <View style={styles.alertBox}>
@@ -382,10 +382,10 @@ export function PacientesScreen() {
                   <TextInput style={[styles.input, !respNome && styles.inputAlerta]} placeholder="Ex: João da Silva" value={respNome} onChangeText={setRespNome} />
 
                   <Text style={styles.inputLabel}>Telefone do Responsável *</Text>
-                  <MaskedTextInput style={[styles.input, !respTelefone && styles.inputAlerta]} mask="(99) 99999-9999" placeholder="(11) 99999-0000" keyboardType="phone-pad" value={respTelefone} onChangeText={(text) => setRespTelefone(text)} />
+                  <TextInputMask style={[styles.input, !respTelefone && styles.inputAlerta]} type="custom" options={{ mask: '(99) 99999-9999' }} placeholder="(11) 99999-0000" keyboardType="phone-pad" value={respTelefone} onChangeText={(text: string) => setRespTelefone(text)} />
 
                   <Text style={styles.inputLabel}>CPF do Responsável (Opcional)</Text>
-                  <MaskedTextInput style={styles.input} mask="999.999.999-99" placeholder="000.000.000-00" keyboardType="numeric" value={respCpf} onChangeText={(text) => setRespCpf(text)} />
+                  <TextInputMask style={styles.input} type="custom" options={{ mask: '999.999.999-99' }} placeholder="000.000.000-00" keyboardType="numeric" value={respCpf} onChangeText={(text: string) => setRespCpf(text)} />
                 </View>
               )}
 
@@ -400,10 +400,10 @@ export function PacientesScreen() {
                   <TextInput style={[styles.input, !parceiroNome && styles.inputAlerta]} placeholder="Ex: Carlos Oliveira" value={parceiroNome} onChangeText={setParceiroNome} />
 
                   <Text style={styles.inputLabel}>CPF do(a) Parceiro(a) *</Text>
-                  <MaskedTextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} mask="999.999.999-99" placeholder="000.000.000-00" keyboardType="numeric" value={parceiroCpf} onChangeText={(text) => setParceiroCpf(text)} />
+                  <TextInputMask style={[styles.input, !parceiroCpf && styles.inputAlerta]} type="custom" options={{ mask: '999.999.999-99' }} placeholder="000.000.000-00" keyboardType="numeric" value={parceiroCpf} onChangeText={(text: string) => setParceiroCpf(text)} />
 
                   <Text style={styles.inputLabel}>Telefone do(a) Parceiro(a) *</Text>
-                  <MaskedTextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} mask="(99) 99999-9999" placeholder="(11) 99999-0000" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={(text) => setParceiroTelefone(text)} />
+                  <TextInputMask style={[styles.input, !parceiroTelefone && styles.inputAlerta]} type="custom" options={{ mask: '(99) 99999-9999' }} placeholder="(11) 99999-0000" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={(text: string) => setParceiroTelefone(text)} />
                 </View>
               )}
 
@@ -419,53 +419,53 @@ export function PacientesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F2F5F8' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 24, paddingTop: 32, backgroundColor: '#FFF' },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.xxl, paddingTop: 32, backgroundColor: colors.surface },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primaryDark },
   headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  addBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, alignItems: 'center', gap: 6 },
+  addBtn: { flexDirection: 'row', backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: 10, borderRadius: 20, alignItems: 'center', gap: 6, ...shadows.btn },
   addBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
-  pendentesBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', marginHorizontal: 20, marginTop: 12, padding: 12, borderRadius: 12, gap: 8 },
+  pendentesBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.infoLight, marginHorizontal: spacing.xl, marginTop: spacing.md, padding: spacing.md, borderRadius: 12, gap: 8 },
   pendentesText: { flex: 1, color: colors.primary, fontSize: 13, fontWeight: '600' },
   pendentesAction: { color: colors.primary, fontWeight: 'bold', fontSize: 13 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', marginHorizontal: 20, marginTop: 16, paddingHorizontal: 16, borderRadius: 12, height: 48, elevation: 1 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, marginHorizontal: spacing.xl, marginTop: spacing.lg, paddingHorizontal: spacing.lg, borderRadius: 12, height: 48, ...shadows.card },
   searchInput: { flex: 1, marginLeft: 12, fontSize: 16 },
-  filterContainer: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 12, gap: 6 },
-  filterBtn: { flex: 1, backgroundColor: '#FFF', paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#EAEEF3', elevation: 1 },
+  filterContainer: { flexDirection: 'row', paddingHorizontal: spacing.xl, marginTop: spacing.md, gap: 6 },
+  filterBtn: { flex: 1, backgroundColor: colors.surface, paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.border, ...shadows.card },
   filterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterBtnText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
   filterBtnTextActive: { color: '#FFF' },
-  list: { padding: 20, paddingBottom: 100 },
+  list: { padding: spacing.xl, paddingBottom: 100 },
   emptyState: { alignItems: 'center', paddingTop: 60 },
   emptyText: { color: colors.textSecondary, marginTop: 16, fontSize: 15 },
-  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12, elevation: 2 },
-  cardAlerta: { borderWidth: 1.5, borderColor: '#EA580C' },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, padding: spacing.lg, flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md, ...shadows.card },
+  cardAlerta: { borderWidth: 1.5, borderColor: colors.warning },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: spacing.lg },
   avatarInitial: { color: '#FFF', fontSize: 18, fontWeight: '800' },
   info: { flex: 1 },
   nomeText: { fontSize: 16, fontWeight: '700', color: colors.textHeader },
   sub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  respTag: { fontSize: 11, color: '#10B981', marginTop: 4, fontWeight: '600' },
-  parcTag: { fontSize: 11, color: '#DB2777', marginTop: 4, fontWeight: '600' },
-  alertaTag: { fontSize: 11, color: '#EA580C', marginTop: 4, fontWeight: '600' },
+  respTag: { fontSize: 11, color: colors.success, marginTop: 4, fontWeight: '600' },
+  parcTag: { fontSize: 11, color: colors.tagCasal, marginTop: 4, fontWeight: '600' },
+  alertaTag: { fontSize: 11, color: colors.warning, marginTop: 4, fontWeight: '600' },
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   tagText: { fontSize: 11, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '92%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalContent: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.xxl, maxHeight: '92%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
   modalTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textHeader },
   inputLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 14 },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#EAEEF3', borderRadius: 12, padding: 14, fontSize: 16, color: colors.textHeader },
-  inputAlerta: { borderColor: '#EA580C', borderWidth: 1.5 },
-  alertBox: { flexDirection: 'row', backgroundColor: '#FFF7ED', padding: 12, borderRadius: 10, alignItems: 'center', gap: 8, marginTop: 8 },
-  alertText: { flex: 1, color: '#EA580C', fontSize: 13, fontWeight: '600' },
+  input: { backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, fontSize: 16, color: colors.textHeader },
+  inputAlerta: { borderColor: colors.warning, borderWidth: 1.5 },
+  alertBox: { flexDirection: 'row', backgroundColor: colors.warningLight, padding: spacing.md, borderRadius: 10, alignItems: 'center', gap: 8, marginTop: 8 },
+  alertText: { flex: 1, color: colors.warning, fontSize: 13, fontWeight: '600' },
   typeRow: { flexDirection: 'row', gap: 8 },
-  typeBtn: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#EAEEF3', borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  typeBtnActive: { backgroundColor: '#DBEAFE', borderColor: colors.primary },
+  typeBtn: { flex: 1, backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  typeBtnActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   typeText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   typeTextActive: { color: colors.primary },
-  sectionDivider: { borderTopWidth: 1, borderTopColor: '#EAEEF3', marginTop: 20, paddingTop: 16 },
+  sectionDivider: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 20, paddingTop: 16 },
   sectionLabel: { fontSize: 14, fontWeight: '700', color: colors.textHeader },
-  submitBtn: { backgroundColor: colors.primary, borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 24, marginBottom: 24 },
+  submitBtn: { backgroundColor: colors.primary, borderRadius: 16, padding: spacing.lg, alignItems: 'center', marginTop: 24, marginBottom: 24 },
   submitText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });

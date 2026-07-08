@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export const getUsuarios = async (req: Request, res: Response) => {
   try {
-    const solicitantePerfil = (req as any).user.perfil;
+    const solicitantePerfil = req.user!.perfil;
     if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem listar os usuários.' });
     }
@@ -49,7 +49,7 @@ export const getUsuarios = async (req: Request, res: Response) => {
 
 export const updateUsuarioStatus = async (req: Request, res: Response) => {
   try {
-    const solicitantePerfil = (req as any).user.perfil;
+    const solicitantePerfil = req.user!.perfil;
     if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem alterar o status de usuários.' });
     }
@@ -80,7 +80,7 @@ export const updateUsuarioStatus = async (req: Request, res: Response) => {
 
 export const updateUsuarioRole = async (req: Request, res: Response) => {
   try {
-    const solicitantePerfil = (req as any).user.perfil;
+    const solicitantePerfil = req.user!.perfil;
     if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem gerenciar perfis de acesso.' });
     }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
-import { MaskedTextInput } from 'react-native-masked-text';
+import { TextInputMask } from 'react-native-masked-text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -422,17 +422,17 @@ export function PacientePerfilScreen() {
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'CPF (Quem iniciou o contato) *' : 'CPF *'}
               </Text>
-              <MaskedTextInput style={styles.input} mask="999.999.999-99" keyboardType="numeric" value={cpf} onChangeText={(text) => setCpf(text)} />
+              <TextInputMask style={styles.input} type="custom" options={{ mask: '999.999.999-99' }} keyboardType="numeric" value={cpf} onChangeText={(text: string) => setCpf(text)} />
 
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'Telefone (Quem iniciou o contato) *' : 'Telefone *'}
               </Text>
-              <MaskedTextInput style={styles.input} mask="(99) 99999-9999" keyboardType="phone-pad" value={telefone} onChangeText={(text) => setTelefone(text)} />
+              <TextInputMask style={styles.input} type="custom" options={{ mask: '(99) 99999-9999' }} keyboardType="phone-pad" value={telefone} onChangeText={(text: string) => setTelefone(text)} />
 
               <Text style={styles.inputLabel}>
                 {tipoAtendimento === 'CASAL' ? 'Data de Nascimento (Quem iniciou o contato) *' : 'Data de Nascimento *'}
               </Text>
-              <MaskedTextInput style={styles.input} mask="99/99/9999" keyboardType="numeric" value={dataNascimento} onChangeText={(text) => setDataNascimento(text)} />
+              <TextInputMask style={styles.input} type="custom" options={{ mask: '99/99/9999' }} keyboardType="numeric" value={dataNascimento} onChangeText={(text: string) => setDataNascimento(text)} />
 
               {isMenorEdicao && (
                 <View style={styles.alertBox}>
@@ -465,10 +465,10 @@ export function PacientePerfilScreen() {
                   <TextInput style={[styles.input, !respNome && styles.inputAlerta]} value={respNome} onChangeText={setRespNome} />
 
                   <Text style={styles.inputLabel}>Telefone do Responsável *</Text>
-                  <MaskedTextInput style={[styles.input, !respTelefone && styles.inputAlerta]} mask="(99) 99999-9999" keyboardType="phone-pad" value={respTelefone} onChangeText={(text) => setRespTelefone(text)} />
+                  <TextInputMask style={[styles.input, !respTelefone && styles.inputAlerta]} type="custom" options={{ mask: '(99) 99999-9999' }} keyboardType="phone-pad" value={respTelefone} onChangeText={(text: string) => setRespTelefone(text)} />
 
                   <Text style={styles.inputLabel}>CPF do Responsável (Opcional)</Text>
-                  <MaskedTextInput style={styles.input} mask="999.999.999-99" keyboardType="numeric" value={respCpf} onChangeText={(text) => setRespCpf(text)} />
+                  <TextInputMask style={styles.input} type="custom" options={{ mask: '999.999.999-99' }} keyboardType="numeric" value={respCpf} onChangeText={(text: string) => setRespCpf(text)} />
                 </View>
               )}
 
@@ -483,10 +483,10 @@ export function PacientePerfilScreen() {
                   <TextInput style={[styles.input, !parceiroNome && styles.inputAlerta]} value={parceiroNome} onChangeText={setParceiroNome} />
 
                   <Text style={styles.inputLabel}>CPF do(a) Parceiro(a) *</Text>
-                  <MaskedTextInput style={[styles.input, !parceiroCpf && styles.inputAlerta]} mask="999.999.999-99" keyboardType="numeric" value={parceiroCpf} onChangeText={(text) => setParceiroCpf(text)} />
+                  <TextInputMask style={[styles.input, !parceiroCpf && styles.inputAlerta]} type="custom" options={{ mask: '999.999.999-99' }} keyboardType="numeric" value={parceiroCpf} onChangeText={(text: string) => setParceiroCpf(text)} />
 
                   <Text style={styles.inputLabel}>Telefone do(a) Parceiro(a) *</Text>
-                  <MaskedTextInput style={[styles.input, !parceiroTelefone && styles.inputAlerta]} mask="(99) 99999-9999" keyboardType="phone-pad" value={parceiroTelefone} onChangeText={(text) => setParceiroTelefone(text)} />
+                  <TextInputMask style={[styles.input, !parceiroTelefone && styles.inputAlerta]} type="custom" options={{ mask: '(99) 99999-9999' }} keyboardType="phone-pad" value={parceiroTelefone} onChangeText={(text: string) => setParceiroTelefone(text)} />
                 </View>
               )}
 

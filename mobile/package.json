@@ -6,7 +6,10 @@
     "start": "node update-ip.js && expo start",
     "android": "node update-ip.js && expo start --android",
     "ios": "node update-ip.js && expo start --ios",
-    "web": "node update-ip.js && expo start --web"
+    "web": "node update-ip.js && expo start --web",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -18,6 +21,7 @@
     "@tanstack/react-query": "^5.97.0",
     "axios": "^1.15.0",
     "expo": "~54.0.33",
+    "expo-asset": "~12.0.13",
     "expo-constants": "^56.0.18",
     "expo-file-system": "^56.0.8",
     "expo-linear-gradient": "~15.0.8",
@@ -41,11 +45,16 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.0.1",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
     "eslint": "^9.39.4",
     "eslint-config-expo": "^57.0.0",
     "jest": "^30.4.2",
+    "jest-expo": "~54.0.17",
     "prettier": "^3.9.4",
+    "react-test-renderer": "^19.0.0",
     "typescript": "~5.9.2"
   },
   "private": true

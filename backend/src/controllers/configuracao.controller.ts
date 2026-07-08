@@ -25,7 +25,7 @@ export const getConfiguracao = async (req: Request, res: Response) => {
 
 export const updateConfiguracao = async (req: Request, res: Response) => {
   try {
-    const userPerfil = (req as any).user.perfil;
+    const userPerfil = req.user!.perfil;
     if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores ou Administradores podem alterar as configurações.' });
     }

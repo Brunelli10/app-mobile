@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const getDashboardMetrics = async (req: Request, res: Response) => {
   try {
-    const perfil = (req as any).user.perfil;
+    const perfil = req.user!.perfil;
     if (!['GESTOR', 'ROOT'].includes(perfil)) {
       return res.status(403).json({ error: 'Apenas Gestores têm acesso ao Dashboard.' });
     }

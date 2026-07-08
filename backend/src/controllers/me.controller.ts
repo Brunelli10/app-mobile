@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 /** GET /api/me — retorna dados do usuário logado */
 export const getMe = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const user = await prisma.usuario.findUnique({
       where: { id: userId },
       select: { id: true, nome: true, email: true, perfil: true, status: true, fotoPerfil: true, createdAt: true }
@@ -23,7 +23,7 @@ export const getMe = async (req: Request, res: Response) => {
 /** PATCH /api/me — atualiza nome e/ou email */
 export const updateMe = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const { nome, email } = req.body;
 
     if (!nome && !email) {
@@ -58,7 +58,7 @@ export const updateMe = async (req: Request, res: Response) => {
 /** PATCH /api/me/senha — troca de senha */
 export const updateSenha = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const { senhaAtual, novaSenha } = req.body;
 
     if (!senhaAtual || !novaSenha) {

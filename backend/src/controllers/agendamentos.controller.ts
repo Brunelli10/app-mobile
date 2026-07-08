@@ -6,8 +6,8 @@ const prisma = new PrismaClient();
 
 export const createAgendamento = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
-    const userPerfil = (req as any).user.perfil;
+    const userId = req.user!.id;
+    const userPerfil = req.user!.perfil;
     const { salaId, horarioInicio, weeksCount, pacienteId, dataInicio, skipConflicts, estagiarioId } = req.body;
     
     if (!salaId || !horarioInicio || !weeksCount || !pacienteId || !dataInicio) {
@@ -218,7 +218,7 @@ export const createAgendamento = async (req: Request, res: Response) => {
 
 export const deleteAgendamento = async (req: Request, res: Response) => {
   try {
-    const userPerfil = (req as any).user.perfil;
+    const userPerfil = req.user!.perfil;
     if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores podem cancelar agendamentos.' });
     }

@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const getRelatorioSessoes = async (req: Request, res: Response) => {
   try {
-    const solicitantePerfil = (req as any).user.perfil;
+    const solicitantePerfil = req.user!.perfil;
     if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem emitir relatórios.' });
     }
@@ -74,7 +74,7 @@ export const getRelatorioSessoes = async (req: Request, res: Response) => {
 
 export const getRelatorioEstagiarios = async (req: Request, res: Response) => {
   try {
-    const solicitantePerfil = (req as any).user.perfil;
+    const solicitantePerfil = req.user!.perfil;
     if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem emitir relatórios.' });
     }
@@ -142,7 +142,7 @@ export const getRelatorioEstagiarios = async (req: Request, res: Response) => {
 
 export const getRelatorioPacientes = async (req: Request, res: Response) => {
   try {
-    const solicitantePerfil = (req as any).user.perfil;
+    const solicitantePerfil = req.user!.perfil;
     if (solicitantePerfil !== 'GESTOR' && solicitantePerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas gestores podem emitir relatórios.' });
     }

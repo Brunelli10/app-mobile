@@ -37,7 +37,7 @@ export const getSalas = async (req: Request, res: Response) => {
 
 export const createSala = async (req: Request, res: Response) => {
   try {
-    const userPerfil = (req as any).user.perfil;
+    const userPerfil = req.user!.perfil;
     if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores podem criar salas.' });
     }
@@ -132,7 +132,7 @@ export const getDisponibilidadeSala = async (req: Request, res: Response) => {
 
 export const deleteSala = async (req: Request, res: Response) => {
   try {
-    const userPerfil = (req as any).user.perfil;
+    const userPerfil = req.user!.perfil;
     if (userPerfil !== 'GESTOR' && userPerfil !== 'ROOT') {
       return res.status(403).json({ error: 'Acesso Negado: Apenas Gestores podem excluir salas.' });
     }

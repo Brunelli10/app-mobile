@@ -7,7 +7,7 @@ import { Button } from '../../components/Button';
 import { api } from '../../api/apiClient';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const REPORT_TYPES = [
   { id: 'sessoes', title: 'Sessões e Atendimentos', desc: 'Sessões por período, sala e status', icon: 'calendar-outline' },

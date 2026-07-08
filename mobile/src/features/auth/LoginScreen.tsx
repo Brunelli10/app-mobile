@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { colors } from '../../config/theme';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigation } from '@react-navigation/native';
-import { api } from '../../api/apiClient';
+import { authApi } from '../../api/auth.api';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,10 @@ export function LoginScreen() {
 
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
 
   const handleLogin = async (data: LoginFormData) => {
@@ -32,9 +36,9 @@ export function LoginScreen() {
     console.log('[LOGIN] Tentando entrar com email:', data.email);
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email: data.email, password: data.password });
+      const result = await authApi.login(data.email, data.password);
       console.log('[LOGIN] Login bem-sucedido na API.');
-      await login(response.data.token, response.data.user);
+      await login(result.token, result.user);
       console.log('[LOGIN] Login finalizado no useAuthStore.');
     } catch (err: any) {
       console.error('[LOGIN] Erro capturado no handleLogin:', err);

@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 /** GET /api/notificacoes — lista as notificações do usuário logado */
 export const getNotificacoes = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const { soNaoLidas } = req.query;
 
     const notificacoes = await prisma.notificacao.findMany({
@@ -28,7 +28,7 @@ export const getNotificacoes = async (req: Request, res: Response) => {
 /** GET /api/notificacoes/count — contagem total e de não lidas */
 export const getNotificacoesCount = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     const [total, naoLidas] = await Promise.all([
       prisma.notificacao.count({ where: { usuarioId: userId } }),
@@ -45,7 +45,7 @@ export const getNotificacoesCount = async (req: Request, res: Response) => {
 /** PUT /api/notificacoes/:id/lida — marca uma notificação como lida */
 export const marcarComoLida = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const id = req.params.id as string;
 
     await prisma.notificacao.updateMany({
@@ -63,7 +63,7 @@ export const marcarComoLida = async (req: Request, res: Response) => {
 /** PUT /api/notificacoes/lidas/todas — marca todas as notificações como lidas */
 export const marcarTodasLidas = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
 
     await prisma.notificacao.updateMany({
       where: { usuarioId: userId, lida: false },

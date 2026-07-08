@@ -11,9 +11,9 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as Express.Request['user'];
     // Injetando o decodificado (dados do usuário) para uso no Payload dos Controllers
-    (req as any).user = decoded;
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token Expirado ou Inválido. Acesso Vetado.' });

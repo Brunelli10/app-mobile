@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
-import { colors } from '../../config/theme';
+import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/apiClient';
@@ -317,20 +317,20 @@ export function AgendaScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F2F5F8' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, backgroundColor: '#FFF' },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: 20, paddingBottom: 14, backgroundColor: colors.surface },
   headerTitle: { fontSize: 22, fontWeight: '800', color: colors.primaryDark },
   headerSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  toggleBox: { flexDirection: 'row', backgroundColor: '#EAEEF3', borderRadius: 20, padding: 3 },
+  toggleBox: { flexDirection: 'row', backgroundColor: colors.border, borderRadius: 20, padding: 3 },
   toggleBtn: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 16 },
-  toggleBtnActive: { backgroundColor: '#FFF', elevation: 2 },
+  toggleBtnActive: { backgroundColor: colors.surface, ...shadows.card },
   toggleText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   toggleTextActive: { color: colors.primary },
 
   // ─── Calendário Semanal ─────────────────────────────────
-  weekContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#EAEEF3', paddingBottom: 12 },
-  weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 },
-  navArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' },
+  weekContainer: { backgroundColor: colors.surface, borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 12 },
+  weekNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 8 },
+  navArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.infoLight, justifyContent: 'center', alignItems: 'center' },
   weekLabel: { fontSize: 15, fontWeight: '700', color: colors.primaryDark },
   weekStrip: { flexDirection: 'row', paddingHorizontal: 10, gap: 4 },
   dayCol: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 14 },
@@ -346,22 +346,22 @@ const styles = StyleSheet.create({
   sessionDotActive: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.7)', marginTop: 3 },
 
   // ─── Calendário Mensal ──────────────────────────────────
-  calendarWrapper: { backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#EAEEF3' },
+  calendarWrapper: { backgroundColor: colors.surface, borderBottomWidth: 1, borderColor: colors.border },
 
   // ─── Filtro Status ──────────────────────────────────────
-  statusFilterContainer: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 14, gap: 6 },
-  statusFilterBtn: { flex: 1, backgroundColor: '#FFF', paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#EAEEF3', elevation: 1 },
+  statusFilterContainer: { flexDirection: 'row', paddingHorizontal: spacing.lg, marginTop: 14, gap: 6 },
+  statusFilterBtn: { flex: 1, backgroundColor: colors.surface, paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.border, ...shadows.card },
   statusFilterBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   statusFilterText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
   statusFilterTextActive: { color: '#FFF' },
 
   // ─── Lista ──────────────────────────────────────────────
   listContainer: { flex: 1 },
-  listContent: { padding: 16, paddingBottom: 100 },
+  listContent: { padding: spacing.lg, paddingBottom: 100 },
   emptyState: { flex: 1, alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textHeader, marginTop: 16 },
   emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 8, lineHeight: 22 },
-  agendaCard: { backgroundColor: '#FFF', borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, overflow: 'hidden', paddingRight: 14 },
+  agendaCard: { backgroundColor: colors.surface, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12, ...shadows.card, overflow: 'hidden', paddingRight: 14 },
   cardAccent: { width: 5, alignSelf: 'stretch' },
   cardBody: { flex: 1, padding: 14, gap: 5 },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -373,9 +373,9 @@ const styles = StyleSheet.create({
   tagBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, marginLeft: 6 },
   tagBadgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
   estagiarioText: { fontSize: 12, color: colors.textSecondary },
-  substitutoText: { fontSize: 11, color: '#D97706', fontWeight: '600', marginTop: 1 },
+  substitutoText: { fontSize: 11, color: colors.warning, fontWeight: '600', marginTop: 1 },
   cardBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   salaText: { fontSize: 12, color: colors.textSecondary, fontWeight: '500', flex: 1 },
-  tipoBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  tipoBadge: { backgroundColor: colors.border, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
   tipoText: { fontSize: 10, color: colors.textSecondary, fontWeight: '600' }
 });

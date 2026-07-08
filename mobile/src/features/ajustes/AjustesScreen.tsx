@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
-import { colors } from '../../config/theme';
+import { colors, spacing, shadows } from '../../config/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useQuery } from '@tanstack/react-query';
@@ -26,14 +26,14 @@ function MenuRow({ icon, label, sublabel, onPress, danger = false }: {
 }) {
   return (
     <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.menuIcon, { backgroundColor: danger ? '#FEF2F2' : '#EFF6FF' }]}>
-        <Ionicons name={icon} size={18} color={danger ? '#EF4444' : colors.primary} />
+      <View style={[styles.menuIcon, { backgroundColor: danger ? colors.errorLight : colors.infoLight }]}>
+        <Ionicons name={icon} size={18} color={danger ? colors.error : colors.primary} />
       </View>
       <View style={styles.menuText}>
-        <Text style={[styles.menuLabel, danger && { color: '#EF4444' }]}>{label}</Text>
+        <Text style={[styles.menuLabel, danger && { color: colors.error }]}>{label}</Text>
         {sublabel && <Text style={styles.menuSub}>{sublabel}</Text>}
       </View>
-      <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }
@@ -181,29 +181,29 @@ export function AjustesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F2F5F8' },
+  safeArea: { flex: 1, backgroundColor: colors.background },
   container: { paddingBottom: 100 },
-  pageHeader: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 4 },
+  pageHeader: { paddingHorizontal: spacing.xl, paddingTop: 28, paddingBottom: 4 },
   pageTitle: { fontSize: 30, fontWeight: '800', color: colors.primaryDark },
-  profileCard: { backgroundColor: '#FFF', margin: 20, marginTop: 16, borderRadius: 24, padding: 24, alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.07, shadowOffset: { width: 0, height: 4 } },
-  avatarWrapper: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primaryDark, justifyContent: 'center', alignItems: 'center', marginBottom: 14, elevation: 6 },
+  profileCard: { backgroundColor: colors.surface, margin: spacing.xl, marginTop: 16, borderRadius: 24, padding: 24, alignItems: 'center', ...shadows.card },
+  avatarWrapper: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primaryDark, justifyContent: 'center', alignItems: 'center', marginBottom: 14, ...shadows.btn },
   avatarText: { fontSize: 30, fontWeight: '900', color: '#FFF' },
   userName: { fontSize: 22, fontWeight: '800', color: colors.textHeader },
   userEmail: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
   perfilBadge: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   perfilText: { fontSize: 13, fontWeight: '700' },
-  section: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#FFF', borderRadius: 18, padding: 16, elevation: 1 },
+  section: { marginHorizontal: spacing.xl, marginBottom: spacing.lg, backgroundColor: colors.surface, borderRadius: 18, padding: spacing.lg, ...shadows.card },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
   statsRow: { flexDirection: 'row', gap: 10 },
-  statCard: { flex: 1, backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, alignItems: 'center' },
+  statCard: { flex: 1, backgroundColor: colors.inputBackground, borderRadius: 12, padding: 12, alignItems: 'center' },
   statValue: { fontSize: 22, fontWeight: '800', color: colors.textHeader },
   statLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '600', marginTop: 4, textAlign: 'center' },
-  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: '#F1F5F9', gap: 12 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: colors.border, gap: 12 },
   menuIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   menuText: { flex: 1 },
   menuLabel: { fontSize: 15, fontWeight: '600', color: colors.textHeader },
   menuSub: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 20, backgroundColor: '#FEF2F2', borderRadius: 16, padding: 16, gap: 10 },
-  logoutText: { fontSize: 16, fontWeight: '700', color: '#EF4444' },
-  footer: { textAlign: 'center', fontSize: 12, color: '#CBD5E1', marginBottom: 8 }
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: spacing.xl, backgroundColor: colors.errorLight, borderRadius: 16, padding: spacing.lg, gap: 10 },
+  logoutText: { fontSize: 16, fontWeight: '700', color: colors.error },
+  footer: { textAlign: 'center', fontSize: 12, color: colors.textMuted, marginBottom: 8 }
 });

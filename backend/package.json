@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon src/index.ts",
     "start": "ts-node src/index.ts",
-    "seed": "ts-node src/seed.ts"
+    "seed": "ts-node src/seed.ts",
+    "test": "jest --config jest.config.json",
+    "test:coverage": "jest --config jest.config.json --coverage"
   },
   "prisma": {
     "seed": "ts-node src/seed.ts"
