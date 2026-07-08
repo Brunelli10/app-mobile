@@ -13,6 +13,8 @@ import { ConfiguracoesClinicaScreen } from '../features/ajustes/ConfiguracoesCli
 import { GestaoAcessosScreen } from '../features/ajustes/GestaoAcessosScreen';
 import { RelatoriosScreen } from '../features/ajustes/RelatoriosScreen';
 import { PerfilScreen } from '../features/ajustes/PerfilScreen';
+import { SupervisaoScreen } from '../features/supervisao/SupervisaoScreen';
+import { GradeHorariosScreen } from '../features/ajustes/GradeHorariosScreen';
 import { DashboardGestorScreen } from '../features/gestor/DashboardGestorScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificacoesStore } from '../store/useNotificacoesStore';
@@ -61,6 +63,8 @@ function ConfiguracoesNavigator() {
       <ConfiguracoesStack.Screen name="GestaoAcessos" component={GestaoAcessosScreen} />
       <ConfiguracoesStack.Screen name="Relatorios" component={RelatoriosScreen} />
       <ConfiguracoesStack.Screen name="Perfil" component={PerfilScreen} />
+      <ConfiguracoesStack.Screen name="Supervisao" component={SupervisaoScreen} />
+      <ConfiguracoesStack.Screen name="GradeHorarios" component={GradeHorariosScreen} />
     </ConfiguracoesStack.Navigator>
   );
 }

@@ -145,9 +145,9 @@ export function AjustesScreen() {
           {/* Menus do Estagiário */}
           {isEstagiario && (
             <>
-              <MenuRow icon="calendar-outline" label="Minha Grade de Horários" sublabel="Gerenciar dias e horários livres" onPress={() => Alert.alert('Em desenvolvimento', 'O gerenciamento da sua grade será lançado em breve.')} />
+              <MenuRow icon="calendar-outline" label="Minha Grade de Horários" sublabel="Gerenciar dias e horários livres" onPress={() => navigation.navigate('GradeHorarios')} />
               <MenuRow icon="person-add-outline" label="Meus Pacientes" sublabel="Lista e ficha clínica" onPress={() => navigation.navigate('Pacientes')} />
-              <MenuRow icon="ribbon-outline" label="Supervisão" sublabel="Notas e relatórios do supervisor" onPress={() => Alert.alert('Em desenvolvimento', 'A área de supervisão está sendo construída.')} />
+              <MenuRow icon="ribbon-outline" label="Supervisão" sublabel="Notas e relatórios do supervisor" onPress={() => navigation.navigate('Supervisao')} />
             </>
           )}
 
